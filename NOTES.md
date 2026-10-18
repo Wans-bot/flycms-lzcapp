@@ -93,3 +93,71 @@
 - SPA 是 **hash 路由**（`VITE_ROUTER_HISTORY=hash`），所以挂在 `/admin/` 子路径不需要服务端 rewrite，
   nginx 只需 `try_files $uri $uri/ /admin/index.html`。
 - nginx 同时承担 `/` 与 `/api/` 到 `flycms:80` 的反代，成为唯一入口。
+
+## 10. 版本号与镜像搬运
+
+- 上游 `backend/pom.xml` 版本是 `1.0-SNAPSHOT`，仓库**没有 tag 也没有 Release**
+  （`GET /repos/sunkaifei/FlyCms/tags` 与 `/releases` 均返回空）。
+  因此 `package.yml` 用 `1.0.0-1`：把 SNAPSHOT 当未定版，末位留给打包修订。
+- 镜像在 GitHub Actions 里构到 `ghcr.io/wans-bot/flycms-lzcapp{,-web}:<sha前12位>`，
+  再用 `lzc-cli appstore copy-image` 搬到 `registry.lazycat.cloud`。
+- **坑**：`copy-image` 是服务端匿名拉取，私有 ghcr 包会报
+  `UNAUTHORIZED: authentication required`；而 GitHub 的
+  `PATCH /user/packages/container/{name}` 对「挂在仓库下的包」一律返回 404，
+  API 改不了可见性。只能让包本身匿名可拉。
+
+## 11. 首次安装启动失败：半套表的坑
+
+第一次实机安装后 `-flycms-1`（后端）与 `-web-1` 都是 `Exited (1)`，后端日志报
+`java.sql.SQLSyntaxErrorException: Table 'flycms.fly_config_web' doesn't exist`。
+
+根因不在 SQL 本身，而在初始化脚本的幂等判断：
+
+- 旧脚本用「`fly_admin` 表是否存在」判断要不要导入。上一次导入中途失败留下了 6 张表，
+  其中就有 `fly_admin`，于是重跑时直接跳过导入、照写 `/tmp/init-db.done`。
+- init 容器随即被判健康，后端带着 6 张表的残库启动，查 `fly_config_web` 必然失败。
+- 旧脚本还有第二个坑：`mysql ... < "$SQL" | tail -20` 的退出码是 `tail` 的，
+  导入失败也会打印「成功」。
+
+现在的策略：**按库表数量判断 + 失败即退出**（`content/init-db.sh`）
+
+- 表数 < `LZC_EXPECTED_TABLES`（默认 80，上游实际 84）→ `DROP DATABASE` 重建后重导；
+- 重导后再数一次表，仍不足就 `exit 1` 且不写 done 标记，healthcheck 保持失败，
+  容器被重启后整库重来。这样应用任何时刻都不会带着半套表对外服务。
+- 实测日志：`当前 flycms 库表数量：6（下限 80）` → 重建导入 → `84（下限 80）` → 常驻。
+
+## 12. schema 版本号：为什么不再逐列打补丁
+
+第一次修完「表存在但列不全」后，入口仍然 500，只是换了个列名：
+
+```
+Unknown column 'use_content'  → Unknown column 'relate_model'  → Unknown column 'is_unique'
+```
+
+原因是 baseline `sql/flycms.sql` 是上游 2026-09-28 09:33 的导出，比 master 落后 29 个迁移；
+逐条判断只能保证「这张表在」，管不了「这一列在」，于是每次都在不同位置补一块，永远补不完。
+迁移文件里还有 11 处 `ADD COLUMN ... AFTER <前一个迁移才加的列>`，按文件名顺序执行会撞车
+（`model-field-advanced` 排在 `model-field-relate` 前面）。
+
+现在的策略：**整库重建 + 迁移全量重放 + 关键列校验 + 版本号登记**（`content/init-db.sh`）
+
+- 库内 `fly_lzc_schema_state.rev` 与脚本的 `LZC_SCHEMA_REV`（当前 `3`）不一致 → `DROP DATABASE`
+  后重导基线、重放 `content/sql/migrations/*.sql`；
+- 一致就直接常驻，重启不重放（迁移里有不带保护的 `INSERT`，重放会插重复行）；
+- 上游那 11 处 `AFTER <前一个迁移才加的列>` 已在本仓库的迁移副本里去掉（列位置对应用无影响），顺序因此无关；
+- 收尾校验 `fly_model.use_content` + `fly_model_field.relate_model/is_unique`，缺一即 `exit 1`。
+- **改了基线或迁移就必须递增 `LZC_SCHEMA_REV`**，否则老库不会重建。
+
+## 13. 部署适配（四）：去掉 /questions/ 死链
+
+上游 demo 数据只带 4 个模型（`images` / `downloads` / `articles` / `testdemo`），没有「问答」模型，
+也没有对应的 `fly_cmodel_questions` 内容表；但主题把 `/questions/` 写成导航硬链接
+（`common/header.html` 一行、`common/footer.html` 两行），于是三个入口点向 404，
+而 `list-questions.html` 里的 `<@fly_list_model model="questions" orderby="weight">` 还会在日志里刷
+`Unknown column 'weight'`。
+
+两条路都试过：
+- 补数据：手工插一行 `fly_model` 能消掉 404，但随后报 `Unknown column 'weight'`，
+  等于要自己造表、造字段、造内容，属于替上游编数据，不做。
+- 删链接：在 `Dockerfile` 构建期把这三行 `href="/questions/"` 删掉，带行数校验（必须正好 3 行）。
+  导航里不出现问答，好过让用户点到 404；将来上游补了模型，这段补丁自然失效（行数为 0 时这里会失败提醒）。

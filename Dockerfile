@@ -15,6 +15,17 @@ RUN git clone --filter=blob:none --no-checkout https://github.com/sunkaifei/FlyC
  && git checkout --detach FETCH_HEAD \
  && echo "built from $(git rev-parse HEAD)"
 
+# 上游 demo 数据不含「问答」模型：baseline 只有 images/downloads/articles/testdemo 四个模型，
+# 也没有 fly_cmodel_questions 表，但主题把 /questions/ 写成导航硬链接（header + footer 共 3 行），
+# 不处理就是三个入口点向 404。这里在构建期删掉这几行：导航里不出现问答，好过让用户点到死链。
+# 行数校验是防呆——上游改了模板结构就这里直接失败，不会静默漏改。
+RUN cd /src/backend/views/templates/pc_theme/defalut \
+ && n=$(cat common/header.html common/footer.html | grep -c 'href="/questions/"' || true) \
+ && echo "待删除的 /questions/ 死链行数=$n" \
+ && [ "$n" -eq 3 ] \
+ && sed -i '/href="\/questions\/"/d' common/header.html common/footer.html \
+ && if grep -q 'href="/questions/"' common/header.html common/footer.html; then echo "仍有 /questions/ 链接"; exit 1; fi
+
 WORKDIR /src/backend
 # maven.test.skip 连测试编译一起跳过：上游测试依赖 Testcontainers 起 MySQL，
 # 构建期没有 docker-in-docker，编它只会白等还可能失败。
