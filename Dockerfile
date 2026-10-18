@@ -30,6 +30,21 @@ RUN cd /src/backend/views/templates/pc_theme/defalut \
  && if grep -q 'href="/questions/"' common/header.html common/footer.html; then echo "仍有 /questions/ 链接"; exit 1; fi \
  && if grep 'href="/questions/"' index.html | grep -qv '\${'; then echo "index.html 仍有 /questions/ 死链"; exit 1; fi
 
+
+# 富文本段落间距（部署适配）：主题 CSS 自相矛盾——
+#   .art-body > * + * { margin-top: 1.05em }   ← 本意是给相邻块留间距
+#   .art-body p { margin: 0 }                  ← 但这条特异性更高，把上面那条对 <p> 盖掉了
+# 结果是每段都贴在一起，整篇正文挤成一堵字墙（上游自带数据正文只有一行 <p>，所以一直没暴露）。
+# 这里补一条 `.art-body p + p`，特异性与 `.art-body p` 相同、位置在后，因此生效。
+# 路径用 find 定位而不是写死：上游目录结构在 views/ 下，和 src/main/resources 不是一套。
+RUN cd /src/backend \
+ && f=$(find . -path '*pc_theme/defalut/css/portal.css' | head -1) \
+ && echo "portal.css：$f" \
+ && [ -n "$f" ] && [ -f "$f" ] \
+ && grep -q '\.art-body p { margin: 0; }' "$f" \
+ && sed -i 's|\.art-body p { margin: 0; }|.art-body p { margin: 0; } .art-body p + p { margin-top: 1.05em; }|' "$f" \
+ && grep -q '\.art-body p + p { margin-top: 1.05em; }' "$f" \
+ && echo "已补段落间距规则"
 WORKDIR /src/backend
 # maven.test.skip 连测试编译一起跳过：上游测试依赖 Testcontainers 起 MySQL，
 # 构建期没有 docker-in-docker，编它只会白等还可能失败。

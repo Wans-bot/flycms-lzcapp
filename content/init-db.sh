@@ -118,6 +118,32 @@ SQL
 
 cleanup_upstream
 
+# 部署适配：上游 SQL 导出时开着「模板调试条」（fly_config_web.template_debug=1），
+# 前台每页左下角会浮出 `TPL · 模板文件 · 主题` 角标，暴露模板文件名与主题名，且会被当成调试版。
+# TemplateResolver 在开关关闭时根本不暴露 __tpl，片段零输出，所以关掉即可，无需改模板。
+mysql -h "$HOST" -u"$USER" "$DB" -e \
+  "UPDATE fly_config_web SET keyvalue='0' WHERE keycode='template_debug';" >/dev/null 2>&1 \
+  || log "关闭模板调试条失败（不致命）"
+
+# 演示内容（部署适配）：上游自带的文章正文只有一行 <p>一句话</p>，另有两篇正文为空的
+# 「定时发布验证稿 / 复测稿」和两篇同标题 0 阅读的重复副本。不补的话详情页会命中主题的
+# 空态提示「本文暂无正文内容」，商店截图就变成一张空页。
+# seed-demo.sql 删掉那 4 条无效数据、给剩下 12 篇补正文与摘要，并写入 demo_content_seeded 标记。
+# 只在标记不存在时执行一次：用户后来在后台编辑过的正文不会被容器重启覆盖。
+seeded=$(mysql -h "$HOST" -u"$USER" -N -B -e \
+  "SELECT COUNT(*) FROM \`${DB}\`.fly_config_web WHERE keycode='demo_content_seeded';" 2>/dev/null || echo 0)
+if [ "${seeded:-0}" = "0" ]; then
+  log "补齐演示内容（seed-demo.sql）"
+  if mysql -h "$HOST" -u"$USER" "$DB" < /lzcapp/pkg/content/seed-demo.sql > /tmp/flycms-seed.log 2>&1; then
+    log "演示内容已写入"
+  else
+    log "演示内容写入失败，日志末尾 15 行："
+    tail -15 /tmp/flycms-seed.log
+  fi
+else
+  log "演示内容已存在，跳过"
+fi
+
 date > "$DONE"
 log "初始化完成，进入常驻"
 while true; do sleep 3600; done
