@@ -99,6 +99,25 @@ fi
 
 final=$(table_count)
 log "最终表数量：${final}"
+# 上游示例数据里带着别人的站点信息（页脚备案号、示例域名、SEO 文案）和一个端到端测试管理员账号。
+# 这些会被审核当成应用方信息，也会让用户以为站点属于别人。用固定值覆盖，幂等，每次启动都执行。
+cleanup_upstream() {
+  if mysql -h "$HOST" -u"$USER" "$DB" >/dev/null 2>&1 <<'SQL'
+UPDATE `fly_config_web` SET `keyvalue` = '' WHERE `keycode` IN ('fly_footer_code', 'fly_url');
+UPDATE `fly_config_web` SET `keyvalue` = 'FlyCms' WHERE `keycode` = 'fly_seo_title';
+UPDATE `fly_config_web` SET `keyvalue` = 'FlyCms' WHERE `keycode` = 'fly_seo_keywords';
+UPDATE `fly_config_web` SET `keyvalue` = '' WHERE `keycode` = 'fly_seo_description';
+DELETE FROM `fly_admin` WHERE `admin_name` <> 'flycms';
+SQL
+  then
+    log "已清理上游示例痕迹（页脚备案号 / 示例域名 / SEO 文案 / 测试管理员）"
+  else
+    log "清理上游示例痕迹失败（不阻断启动，门户页脚可能仍显示上游信息）"
+  fi
+}
+
+cleanup_upstream
+
 date > "$DONE"
 log "初始化完成，进入常驻"
 while true; do sleep 3600; done

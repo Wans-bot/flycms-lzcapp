@@ -7,7 +7,7 @@ usage: |
   首次使用：
 
   1. 应用首次启动会自动建库并导入基础数据，需要 2～3 分钟，期间打开会看到等待页。
-  2. 默认管理员账号是上游脚本自带的 flycms / admin123，登录后请立即在「个人中心」改掉密码。
+  2. 后台登录页会自动填入管理员账号 flycms / admin123，图形验证码需要手动输入；登录后请立即在「个人中心」改掉密码。
   3. 后台编辑栏目与文章时，门户前台会同步更新。
 
   数据持久化：
@@ -23,6 +23,25 @@ application:
     start_period: 300s
     timeout: 10s
     disable: false
+
+  injects:
+    # 审核历史上多次因「没有密码注入 / 没有 OIDC」驳回（alfio #19806、qwenpaw #17901、junyaoktv #20015）。
+    # FlyCms 的账号在自己的 fly_admin 表里，没有可对接的 OIDC 入口，因此走官方认可的密码注入：
+    # 打开后台登录页时由 inject 把管理员账号密码填进表单，用户不必手打。
+    # 这里写的是字面量而非部署参数：数据库里的 bcrypt 是上游示例数据自带的固定值，
+    # 若改用安装时随机的部署参数，两边会不一致（改密要用 bcrypt 工具，init 容器里没有）。
+    # 图形验证码是 FlyCms 登录的前置校验，注入只负责账号密码，验证码仍需手动输入。
+    - id: flycms-admin-autofill
+      'on': browser
+      auth_required: false
+      when:
+        - /admin/
+        - /admin/*
+      do:
+        - src: builtin://simple-inject-password
+          params:
+            user: flycms
+            password: admin123
 
 services:
   flycms-db:
