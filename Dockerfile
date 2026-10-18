@@ -16,15 +16,19 @@ RUN git clone --filter=blob:none --no-checkout https://github.com/sunkaifei/FlyC
  && echo "built from $(git rev-parse HEAD)"
 
 # 上游 demo 数据不含「问答」模型：baseline 只有 images/downloads/articles/testdemo 四个模型，
-# 也没有 fly_cmodel_questions 表，但主题把 /questions/ 写成导航硬链接（header + footer 共 3 行），
+# 也没有 fly_cmodel_questions 表，但主题把 /questions/ 写成导航硬链接（header + footer 3 行，
+# 首页 hero 快捷入口 3 行），
 # 不处理就是三个入口点向 404。这里在构建期删掉这几行：导航里不出现问答，好过让用户点到死链。
 # 行数只做下界校验：上游模板结构变动时这里直接失败，不会静默漏改。
 RUN cd /src/backend/views/templates/pc_theme/defalut \
  && n=$(cat common/header.html common/footer.html | grep -c 'href="/questions/"' || true) \
- && echo "待删除的 /questions/ 死链行数=$n" \
- && [ "$n" -ge 3 ] \
+ && m=$(grep 'href="/questions/"' index.html | grep -vc '\${' || true) \
+ && echo "待删除的 /questions/ 死链行数：header+footer=$n index=$m" \
+ && [ "$n" -ge 3 ] && [ "$m" -ge 3 ] \
  && sed -i '/href="\/questions\/"/d' common/header.html common/footer.html \
- && if grep -q 'href="/questions/"' common/header.html common/footer.html; then echo "仍有 /questions/ 链接"; exit 1; fi
+ && sed -i '/href="\/questions\/"/{/\${/!d}' index.html \
+ && if grep -q 'href="/questions/"' common/header.html common/footer.html; then echo "仍有 /questions/ 链接"; exit 1; fi \
+ && if grep 'href="/questions/"' index.html | grep -qv '\${'; then echo "index.html 仍有 /questions/ 死链"; exit 1; fi
 
 WORKDIR /src/backend
 # maven.test.skip 连测试编译一起跳过：上游测试依赖 Testcontainers 起 MySQL，
