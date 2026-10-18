@@ -3,7 +3,7 @@ version: 2026.9.28-1
 name: FlyCms
 description: 私有化内容管理系统：栏目、文章、下载、图集、站内搜索与会员体系开箱可用，附一套可直接使用的 PC 门户主题。
 author: sunkaifei
-license: AGPL-3.0
+license: MIT
 homepage: https://github.com/sunkaifei/FlyCms
 min_os_version: 1.6.0
 # 只随包提供 PC 门户主题：上游的移动/H5 主题是另一套需要额外渲染服务的工程，

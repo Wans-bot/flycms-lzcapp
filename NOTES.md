@@ -1,6 +1,8 @@
 # FlyCms 可行性验证笔记
 
-> 上游：https://github.com/sunkaifei/FlyCms（AGPL-3.0，3279★，原生 zh-CN）
+> 上游：https://github.com/sunkaifei/FlyCms（**MIT**，656★，原生 zh-CN，默认分支 master）
+>
+> 2026-10-18 更正：此处原写「AGPL-3.0，3279★」是错的。以 GitHub API `/repos/sunkaifei/FlyCms` 的 `license.spdx_id=MIT`、`stargazers_count=656` 为准（仓库无 LICENSE 文件时以 API 识别结果为准，且 `package.yml` 的 `license` 字段必须与此一致）。
 > 本文件记录验证阶段取证到的事实，供写 manifest / 判断可行性使用。
 
 ## 1. 后端构建
