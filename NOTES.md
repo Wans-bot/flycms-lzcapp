@@ -302,3 +302,27 @@ mysql -h "$HOST" -u"$USER" "$DB" -e \
 清空后重跑，19 步全绿，`S5 等待 37s`——这才是一条真实的首次安装链路：5 个容器起来，init 容器等 MySQL、建库、导入 84 张表、跑 29 条迁移、补演示内容、写标记、常驻。
 
 对应的商店素材也随之更新：截图里正文是补齐后的版本，首句直接进正题，不再和摘要重复。
+
+## 21. 提审前的元数据核对
+
+最终产物：`/tmp/flycms-build/application.lpk`，sha256 `715fab59a970db8ac480ddd97b777307e53ad9970ffe3a6b724e8e69914b70a0`，2.9 MB。`--fresh-data` 全新数据卷验收 19 步全绿（本次 `S5 等待 36s`），PC 4 张、移动 0 张、探针退出码 0。
+
+提审前抓出三处元数据错误，都已修正：
+
+| 问题 | 实情 |
+| --- | --- |
+| `license` 写成 `AGPL-3.0` | 上游仓库无 `LICENSE` 文件，GitHub API 的 `license.spdx_id` 是 **MIT**，星数 **656**（旧记录写的 3279 也是错的） |
+| `description` 写「自带文章、相册、**商城**」 | 上游无商城模块，多写的功能等于虚假宣传 |
+| 截图说明写「列表显示封面图」 | 列表页封面块是纯 CSS 渐变，没有图片，`fly_images` 表 0 行 |
+
+版本号也踩了两个坑：`backend/pom.xml` 只有 `1.0-SNAPSHOT`，上游 `git tag` 与 `releases` 均为空，所以无法照抄上游版本；改用 SQL 快照日期 `2026.9.28`。而 `2026.09.28-1` 这类前导零写法会被 `lzc-cli project release` 的 semver 校验直接拒绝，必须写成 `2026.9.28-1`。
+
+提审材料清单见 `PUBLISH.md`。
+
+## 22. 提审的最后一个阻塞：商店凭据
+
+`lzc-cli appstore` 只提供 `login` / `pre-publish` / `publish` / `copy-image` / `my-images` 五个子命令，**没有创建应用的能力**，`publish` 也没用 `create_if_missing` 之类的选项——包名必须先在开发者中心存在。
+
+同时 `publish` 依赖 `lzc-cli appstore login` 产生的本地凭据。本机 `~/.config` 下只有 lpk 工具的环境变量文件，没有商店 token；`copy-image` 与 `my-images` 能用，是因为它们只走 LazyCat 镜像仓库那条链路，与开发者身份无关。
+
+所以最后一步分两段：用户执行 `lzc-cli appstore login` 并在开发者中心建应用 `cloud.lazycat.app.flycms`（字段照 `PUBLISH.md` 第一节填），之后由 `publish` 完成提审。
