@@ -200,3 +200,16 @@ RUN grep -q '"/admin/' /src/frontend/apps/web-antd/dist/index.html || (echo "bas
 另外 nginx 侧还有两个细节（`web/nginx.conf`）：
 - `location = /admin` 必须 301 到 `/admin/`，否则目录无索引会 403。
 - `/admin/index.html` 要 `Cache-Control: no-cache`，否则升级后旧壳子还在加载已被删掉的 chunk。
+
+## 15. 实机验收（1.0.0，2026-10-18）
+
+`box-accept` 18 步全绿（S1 前置 → S9 清理），LPK sha256 前缀 `f54d7aff…`，证据目录 `/tmp/flycms-accept8`。
+
+关键结果：
+- S5：5 个容器全部 Up，就绪耗时 16s。
+- S6：入口链路含 lzcinit 注入，返回体 15845 字节，注入脚本正常出现。
+- S7：门户侧回归 28 页、问题页 0；出图 PC 4 张、移动 0 张（与 `support_mobile: false` 一致）。
+- S7b：应用探针 6 条断言全过（健康、就绪、门户中文、无 `/questions/` 死链、后台壳子、列表页）。
+- 后台白屏已确认消失。判据不是「HTTP 200」，而是 web 容器访问日志里 `/admin/js/*.js` **全部 200、整份日志零 404**，`zh-cn` 语言包正常加载；`/admin/` 截图 194KB（白屏时只有 14KB）。
+
+提审前仍需清理的模板遗留：后台登录页底部的 vben 模板备案号，以及未接通的手机号/扫码/第三方登录入口。

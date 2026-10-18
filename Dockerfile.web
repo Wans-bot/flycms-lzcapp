@@ -24,6 +24,12 @@ WORKDIR /src/frontend
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
+# 上游 vben 模板带着别人的备案号和四个没实现的演示登录入口（手机号/扫码/微信·GitHub·Google），
+# 提审前必须在源码层清掉：备案号会被审核当成应用方信息，演示入口点了没反应。
+# 脚本内对每处替换断言命中次数，上游结构一变就构建失败，而不是悄悄失效让备案号回到截图里。
+COPY web/patch-login.mjs /tmp/patch-login.mjs
+RUN node /tmp/patch-login.mjs
+
 # 不能用「给过程环境变量」的方式改这两个值：根脚本 build:antd 走的是 turbo build，
 # turbo 默认 strict 模式会剥掉未在 globalEnv 声明的变量（上游 turbo.json 只声明了 NODE_ENV），
 # VITE_BASE/VITE_GLOB_API_URL 到不了 vite，结果 base 仍是 /，SPA 会去请求 /js/* 而 404。

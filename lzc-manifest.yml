@@ -52,10 +52,8 @@ services:
     image: registry.lazycat.cloud/wans/library/mysql:720d8e3ace6b770d
     depends_on:
       - flycms-db
-    entrypoint:
-      - /bin/bash
-    command:
-      - /lzcapp/pkg/content/init-db.sh
+    entrypoint: /bin/bash
+    command: /lzcapp/pkg/content/init-db.sh
     environment:
       TZ: Asia/Shanghai
       MYSQL_PWD: '{{ printf "%.24s" (stable_secret "FLYCMS_DB_PASSWORD") }}'
@@ -73,7 +71,7 @@ services:
       retries: 90
 
   flycms:
-    image: __FLYCMS_IMAGE__
+    image: registry.lazycat.cloud/wans/wans-bot/flycms-lzcapp:3a8116688b64dd52
     depends_on:
       - flycms-db
       - flycms-init
@@ -101,7 +99,7 @@ services:
 
   # 统一入口：/admin/ 出后台 SPA，其余反代到 flycms（门户前台与 /api）
   web:
-    image: __FLYCMS_WEB_IMAGE__
+    image: registry.lazycat.cloud/wans/wans-bot/flycms-lzcapp-web:9648f8748009e1ad
     depends_on:
       - flycms
     healthcheck:

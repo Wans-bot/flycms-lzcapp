@@ -6,6 +6,10 @@ author: sunkaifei
 license: AGPL-3.0
 homepage: https://github.com/sunkaifei/FlyCms
 min_os_version: 1.6.0
+# 只随包提供 PC 门户主题：上游的移动/H5 主题是另一套需要额外渲染服务的工程，
+# 本包没有包含，手机浏览器访问看到的是同一套 PC 页面。如实声明不支持移动端，
+# 而不是靠截图遮盖（技能库 G4 的硬要求：support_mobile=false 时移动截图必须为 0）。
+support_mobile: false
 permissions:
   required:
     - net.internet
@@ -36,7 +40,7 @@ locales:
       说明与限制：
 
       - 本包是上游官方发行版的容器化移植，界面为上游自带的中文界面，未做汉化或改版。
-      - 移动端/H5 主题需要额外的渲染服务，本包只提供 PC 门户主题，手机访问会使用同一套 PC 页面。
+      - 移动端暂不支持，请使用桌面端访问。上游的 H5 主题是另一套需要额外渲染服务的工程，本包未包含。
   en-US:
     name: FlyCms Content Management System
     description: Self-hosted CMS with channel and article management, membership, attachments and a ready-to-use PC portal theme.
@@ -52,4 +56,4 @@ locales:
       Notes and limits:
 
       - This is a containerised port of the vendor's official release; the UI is the vendor's own Chinese interface.
-      - Only the PC portal theme is bundled; mobile access renders the same PC pages.
+      - Mobile is not supported; please use a desktop browser. The vendor's H5 theme is a separate project that needs an extra rendering service and is not bundled.
