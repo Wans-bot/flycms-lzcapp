@@ -69,6 +69,20 @@ patch('apps/web-antd/src/views/_core/authentication/login.vue', [
   },
 ]);
 
+// 3) 换掉语言包里的模板宣传语：登录页会原样显示这两句，留着就是「这是 vben 模板」的自证。
+patch('packages/locales/src/langs/zh-CN.json', [
+  {
+    from: '开箱即用的大型中后台管理系统',
+    to: 'FlyCms 网站管理系统',
+    note: 'zh-CN.json 里登录页副标题变了',
+  },
+  {
+    from: '工程化、高性能、跨组件库的前端模版',
+    to: '内容、会员与商城一体化后台',
+    note: 'zh-CN.json 里登录页描述变了',
+  },
+]);
+
 // 3) 断言补丁真的落到了产物源码里，避免上面某步被上游重构绕过。
 const prefs = readFileSync(`${root}/apps/web-antd/src/preferences.ts`, 'utf8');
 if (!prefs.includes('enable: false') || prefs.includes('appCopyrightPreferences')) {
@@ -80,5 +94,9 @@ const login = readFileSync(
 );
 if (!login.includes(':show-third-party-login="false"')) {
   throw new Error('[patch-login] login.vue 演示登录入口未如期关闭');
+}
+const zh = readFileSync(`${root}/packages/locales/src/langs/zh-CN.json`, 'utf8');
+if (zh.includes('跨组件库的前端模版') || zh.includes('开箱即用的大型中后台管理系统')) {
+  throw new Error('[patch-login] zh-CN.json 模板宣传语未如期替换');
 }
 console.log('[patch-login] 模板遗留清理完成');
