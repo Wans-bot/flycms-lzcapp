@@ -24,13 +24,21 @@ WORKDIR /src/frontend
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
-# Vite 的规则是：凡是执行时已存在于 process.env 的 VITE_* 变量优先级最高，
-# 会覆盖 .env.production 里的同名值，所以这里直接给环境变量就够了。
-RUN VITE_GLOB_API_URL=/api \
-    VITE_BASE=/admin/ \
-    pnpm build:antd \
- && ls -la /src/frontend/apps/web-antd/dist \
- && ls /src/frontend/apps/web-antd/dist | head -20
+# 不能用「给过程环境变量」的方式改这两个值：根脚本 build:antd 走的是 turbo build，
+# turbo 默认 strict 模式会剥掉未在 globalEnv 声明的变量（上游 turbo.json 只声明了 NODE_ENV），
+# VITE_BASE/VITE_GLOB_API_URL 到不了 vite，结果 base 仍是 /，SPA 会去请求 /js/* 而 404。
+# 所以直接改写 .env.production —— @vben/vite-config 的 loadEnv 用 dotenv 读这些文件，路径确定。
+RUN cd apps/web-antd \
+ && sed -i 's|^VITE_BASE=.*|VITE_BASE=/admin/|' .env.production \
+ && sed -i 's|^VITE_GLOB_API_URL=.*|VITE_GLOB_API_URL=/api|' .env.production \
+ && grep -E '^(VITE_BASE|VITE_GLOB_API_URL|VITE_ROUTER_HISTORY)=' .env.production \
+ && pnpm build:antd \
+ && ls -la dist \
+ && ls dist | head -20
+# 构建后立刻验一遍 base 真的生效了：index.html 里的资源必须是 /admin/ 前缀。
+# 这一条如果破了，后台在浏览器里就是白屏，但 HTTP 仍然 200，回归测不出来，所以必须在这里断死。
+RUN grep -q '"/admin/' /src/frontend/apps/web-antd/dist/index.html \
+ || (echo "构建产物 base 不是 /admin/，后台会白屏"; head -5 /src/frontend/apps/web-antd/dist/index.html; exit 1)
 
 FROM nginx:1.27-alpine
 
