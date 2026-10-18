@@ -1,0 +1,96 @@
+usage: |
+  FlyCms 是可私有化部署的内容管理系统，分「门户前台」和「管理后台」两部分：
+
+  - 打开应用首先看到的是门户前台（PC 主题），栏目、文章、商品都在后台维护。
+  - 管理后台在应用地址后加 /admin，用首次初始化时写入的管理员账号登录。
+
+  首次使用：
+
+  1. 应用首次启动会自动建库并导入基础数据，需要 2～3 分钟，期间打开会看到等待页。
+  2. 默认管理员账号是上游脚本自带的 flycms / admin123，登录后请立即在「个人中心」改掉密码。
+  3. 后台编辑栏目与文章时，门户前台会同步更新。
+
+  数据持久化：
+
+  - 数据库、上传的图片与附件都放在设备本地存储，重启与升级不会丢失。
+
+application:
+  subdomain: flycms
+  routes:
+    - /=http://flycms.cloud.lazycat.app.flycms.lzcapp:80
+  health_check:
+    test_url: http://flycms.cloud.lazycat.app.flycms.lzcapp:80/api/health
+    start_period: 300s
+    timeout: 10s
+    disable: false
+
+services:
+  flycms-db:
+    image: registry.lazycat.cloud/wans/library/mysql:720d8e3ace6b770d
+    command: >-
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --default-time-zone=+08:00
+      --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+      --max_connections=200
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: '{{ printf "%.24s" (stable_secret "FLYCMS_DB_PASSWORD") }}'
+    binds:
+      - /lzcapp/var/flycms-mysql:/var/lib/mysql
+    healthcheck:
+      # mysqladmin ping 在鉴权失败时也返回 0（服务端已应答即为活着），所以不必传口令
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -uroot --silent || exit 1
+      start_period: 120s
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  flycms-init:
+    image: registry.lazycat.cloud/wans/library/mysql:720d8e3ace6b770d
+    depends_on:
+      - flycms-db
+    entrypoint:
+      - /bin/bash
+    command:
+      - /lzcapp/pkg/content/init-db.sh
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_PWD: '{{ printf "%.24s" (stable_secret "FLYCMS_DB_PASSWORD") }}'
+      LZC_DB_HOST: flycms-db
+      LZC_DB_USER: root
+      LZC_DB_NAME: flycms
+      LZC_SQL_FILE: /lzcapp/pkg/content/sql/flycms.sql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - test -f /tmp/init-db.done || exit 1
+      start_period: 90s
+      interval: 10s
+      timeout: 5s
+      retries: 90
+
+  flycms:
+    image: __FLYCMS_IMAGE__
+    depends_on:
+      - flycms-db
+      - flycms-init
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_DATASOURCE_URL: >-
+        jdbc:mysql://flycms-db:3306/flycms?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: '{{ printf "%.24s" (stable_secret "FLYCMS_DB_PASSWORD") }}'
+    binds:
+      - /lzcapp/var/flycms-upload:/app/uploadfiles
+      - /lzcapp/var/flycms-logs:/app/logs
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://127.0.0.1:80/api/health >/dev/null || exit 1
+      start_period: 180s
+      interval: 10s
+      timeout: 8s
+      retries: 30

@@ -1,0 +1,48 @@
+name: Build image
+
+# 只负责把镜像推到 ghcr.io；搬到 registry.lazycat.cloud 走本地
+# `lzc-cli appstore copy-image`（与 13ft 相同的链路）。
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'NOTES.md'
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute short sha tag
+        id: meta
+        run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/wans-bot/flycms-lzcapp:${{ steps.meta.outputs.tag }}
+            ghcr.io/wans-bot/flycms-lzcapp:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

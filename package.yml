@@ -1,0 +1,55 @@
+package: cloud.lazycat.app.flycms
+version: 1.0.0
+name: FlyCms
+description: 私有化内容管理系统：栏目、文章、会员、商城与 PC 门户主题开箱可用，后台所见即所得。
+author: sunkaifei
+license: AGPL-3.0
+homepage: https://github.com/sunkaifei/FlyCms
+min_os_version: 1.6.0
+permissions:
+  required:
+    - net.internet
+locales:
+  zh-CN:
+    name: FlyCms 内容管理系统
+    description: 私有化的内容管理系统：栏目与文章管理、会员体系、附件与商品模块，配一套可直接使用的 PC 门户主题，适合搭个人站点或企业内部信息门户。
+    usage: |
+      FlyCms 分「门户前台」和「管理后台」两部分：打开应用看到的是门户前台，内容都在后台维护。
+
+      首次使用：
+
+      1. 应用首次启动会自动建库并导入上游基础数据，需要 2～3 分钟；期间页面会显示等待提示，耐心等它自己跳转即可。
+      2. 管理后台在应用地址后加 /admin，用上游脚本自带的管理员账号 flycms / admin123 登录。
+      3. 登录后请立刻在「个人中心」修改密码——默认密码是公开的，不改等于门没锁。
+
+      日常使用：
+
+      - 栏目：后台建频道树，控制门户前台的一级/二级导航。
+      - 文章：支持封面图、富文本、置顶与推荐位，发布后前台即时可见。
+      - 会员：前台注册的账号在后台统一管理，可分组与禁用。
+      - 附件：上传的图片与文件走本机存储，不依赖第三方图床。
+
+      数据持久化：
+
+      数据库、上传文件与运行日志都放在设备本地存储，重启、升级都不会丢；卸载应用会一并删除。
+
+      说明与限制：
+
+      - 本包是上游官方发行版的容器化移植，界面为上游自带的中文界面，未做汉化或改版。
+      - 移动端/H5 主题需要额外的渲染服务，本包只提供 PC 门户主题，手机访问会使用同一套 PC 页面。
+  en-US:
+    name: FlyCms Content Management System
+    description: Self-hosted CMS with channel and article management, membership, attachments and a ready-to-use PC portal theme.
+    usage: |
+      FlyCms has two parts: the public portal (what you see when the app opens) and the admin console.
+
+      First run:
+
+      1. The first start creates the database and imports the bundled seed data; this takes 2-3 minutes.
+      2. The admin console is at /admin on the app address, with the vendor's default account flycms / admin123.
+      3. Change that password in your profile right after the first login - the default is public knowledge.
+
+      Notes and limits:
+
+      - This is a containerised port of the vendor's official release; the UI is the vendor's own Chinese interface.
+      - Only the PC portal theme is bundled; mobile access renders the same PC pages.

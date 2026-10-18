@@ -1,0 +1,7 @@
+# FlyCms 打包配置
+# 镜像由 GitHub Actions 构建并推到 ghcr.io，再经 `lzc-cli appstore copy-image`
+# 搬到 registry.lazycat.cloud，因此这里不需要 images/embed 段。
+manifest: ./lzc-manifest.yml
+contentdir: ./content
+pkgout: ./dist
+icon: ./icon.png
