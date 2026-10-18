@@ -42,6 +42,12 @@ application:
           params:
             user: flycms
             password: admin123
+            # 不能自动提交：FlyCms 的登录带图形验证码前置校验，自动提交必然带着空验证码被拦，
+            # 页面会停在红框 + 「请先完成验证」的错误态——用户一打开后台看到的就是报错页。
+            # 关掉后注入只负责填好账号密码，用户手输验证码再点登录。
+            autoSubmit: false
+            # 用户已经手填过就不要覆盖
+            onlyFillEmpty: true
 
 services:
   flycms-db:

@@ -78,7 +78,7 @@ patch('packages/locales/src/langs/zh-CN/authentication.json', [
   },
   {
     from: '工程化、高性能、跨组件库的前端模版',
-    to: '内容、会员与商城一体化后台',
+    to: '门户、内容与会员一体化后台',
     note: 'zh-CN.json 里登录页描述变了',
   },
 ]);
@@ -98,5 +98,10 @@ if (!login.includes(':show-third-party-login="false"')) {
 const zh = readFileSync(`${root}/packages/locales/src/langs/zh-CN/authentication.json`, 'utf8');
 if (zh.includes('跨组件库的前端模版') || zh.includes('开箱即用的大型中后台管理系统')) {
   throw new Error('[patch-login] zh-CN.json 模板宣传语未如期替换');
+}
+// 卖点必须与实际功能一致：上游没有商城模块（84 张表里没有 shop/order/goods 类表，
+// 唯一的 fly_share_order 与电商无关）。文案出现「商城」就是虚假宣传，审核会抓。
+if (zh.includes('商城')) {
+  throw new Error('[patch-login] 文案里出现「商城」，但上游没有商城模块');
 }
 console.log('[patch-login] 模板遗留清理完成');
