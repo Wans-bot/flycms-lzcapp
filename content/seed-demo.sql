@@ -8,7 +8,14 @@
 --   3) 同一标题在列表里出现两次。
 -- 商店截图要能代表产品真实可用状态，所以这里清掉 4 条无效数据、给 12 条补正文与摘要。
 --
--- 幂等：靠 fly_config_web 里的 demo_content_seeded 标记，只在首次执行；用户后续编辑不会被覆盖。
+-- 幂等：靠独立标记表 fly_seed_marker（由 init-db.sh 在库已导入后判断），只在首次执行；
+-- 用户后续在后台编辑正文不会被覆盖。刻意不写进 fly_config_web —— 那是应用的站点配置表，
+-- 塞一行未知 keycode 会让后台「网站设置」页多出一个陌生字段。
+CREATE TABLE IF NOT EXISTS fly_seed_marker (
+  k varchar(64) NOT NULL,
+  v varchar(64) DEFAULT NULL,
+  PRIMARY KEY (k)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 DELETE FROM fly_cmodel_articles WHERE short_url IN (
   'UvEJje',  -- 定时发布验证稿（正文 0 字符，上游测试残留）
@@ -94,9 +101,5 @@ UPDATE fly_cmodel_articles SET
   content = '<p>附件与内容是多对多关系：一张图可以出现在多篇文章里，删文章时不能直接删图，否则别的文章会开天窗。引用计数就是为这个场景加的。</p><p>计数的维护点是「内容保存时重算」。相比在增删改时做加减，重算更不容易漂：解析一次内容里引用的附件集合，和上次保存的集合做差异，新增的加一、移除的减一。这样即使中间漏了一次事件，下一次保存也会自动收敛回来。</p><p>漂移仍然会发生，主要是并发保存或者直接改库。所以需要一个对账入口：定期扫一遍内容里的引用，和计数表比对，不一致就以实际引用为准修正。计数只作为快速判断依据，删文件前仍要确认实际引用为零。</p><p>计数为零的附件不建议立刻物理删除，先进回收站，留一个可恢复窗口。附件误删比磁盘空间重要得多。</p>'
 WHERE short_url = 'ar000cll';
 
-INSERT INTO fly_config_web (id, typebase, keycode, keyvalue, description, sort)
-SELECT COALESCE((SELECT MAX(id) FROM (SELECT id FROM fly_config_web) AS t), 0) + 1, 1,
-       'demo_content_seeded', '1',
-       '演示内容已补齐（init-db.sh 首次执行时写入，用于幂等判断）', 0
-  FROM DUAL
- WHERE NOT EXISTS (SELECT 1 FROM fly_config_web WHERE keycode = 'demo_content_seeded');
+INSERT INTO fly_seed_marker (k, v) VALUES ('demo_content_v1', 'done')
+  ON DUPLICATE KEY UPDATE v = VALUES(v);

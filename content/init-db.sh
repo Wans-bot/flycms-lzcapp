@@ -128,12 +128,17 @@ mysql -h "$HOST" -u"$USER" "$DB" -e \
 # 演示内容（部署适配）：上游自带的文章正文只有一行 <p>一句话</p>，另有两篇正文为空的
 # 「定时发布验证稿 / 复测稿」和两篇同标题 0 阅读的重复副本。不补的话详情页会命中主题的
 # 空态提示「本文暂无正文内容」，商店截图就变成一张空页。
-# seed-demo.sql 删掉那 4 条无效数据、给剩下 12 篇补正文与摘要，并写入 demo_content_seeded 标记。
+# seed-demo.sql 删掉那 4 条无效数据、给剩下 12 篇补正文与摘要，并写入 fly_seed_marker 标记。
 # 只在标记不存在时执行一次：用户后来在后台编辑过的正文不会被容器重启覆盖。
+# 标记放在独立表 fly_seed_marker 而不是 fly_config_web —— 后者是应用的站点配置表，
+# 加一行未知 keycode 会让后台「网站设置」页多出一个陌生字段。表不存在时 COUNT 会报错，
+# 这里按「未补齐」处理（`|| echo 0`），正好让首次执行跑起来。
 seeded=$(mysql -h "$HOST" -u"$USER" -N -B -e \
-  "SELECT COUNT(*) FROM \`${DB}\`.fly_config_web WHERE keycode='demo_content_seeded';" 2>/dev/null || echo 0)
-if [ "${seeded:-0}" = "0" ]; then
+  "SELECT COUNT(*) FROM \`${DB}\`.fly_seed_marker WHERE k='demo_content_v1';" 2>/dev/null || echo 0)
+seeded=$(echo "${seeded:-0}" | tr -d '[:space:]')
+if [ "$seeded" = "0" ]; then
   log "补齐演示内容（seed-demo.sql）"
+  # 同样落盘再看退出码：命令行不接管道，退出码才是 mysql 自己的。
   if mysql -h "$HOST" -u"$USER" "$DB" < /lzcapp/pkg/content/seed-demo.sql > /tmp/flycms-seed.log 2>&1; then
     log "演示内容已写入"
   else
