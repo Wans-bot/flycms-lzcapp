@@ -213,3 +213,36 @@ RUN grep -q '"/admin/' /src/frontend/apps/web-antd/dist/index.html || (echo "bas
 - 后台白屏已确认消失。判据不是「HTTP 200」，而是 web 容器访问日志里 `/admin/js/*.js` **全部 200、整份日志零 404**，`zh-cn` 语言包正常加载；`/admin/` 截图 194KB（白屏时只有 14KB）。
 
 提审前仍需清理的模板遗留：后台登录页底部的 vben 模板备案号，以及未接通的手机号/扫码/第三方登录入口。
+
+## 16. 部署适配（六）：清掉后台登录页的 vben 模板遗留
+
+上游后台是 vben（web-antd）脚手架，直接构建会带着模板自己的痕迹上线。`tools/patch-login.mjs` 在构建期改三处：
+
+- **语言包**（`packages/locales/src/langs/zh-CN/authentication.json`）：`pageTitle`「开箱即用的大型中后台管理系统」与 `pageDesc`「工程化、高性能、跨组件库的前端模版」是登录页主副标题，留着就是「这是模板」的自证。改成 FlyCms 自己的文案。
+  - 注意路径：语言包是**按域分文件**的目录结构（`langs/zh-CN/authentication.json`），不是单文件 `zh-CN.json`。写错路径构建会直接 ENOENT。
+- **备案号**（`packages/@core/preferences/src/config.ts` 默认 `icp: '闽ICP备19024351号'`）：那是模板作者的备案号，绝不能在别人机器上显示。应用层 `preferences` 里覆盖成空。
+- **未接通的登录入口**：`mobileLogin` / `qrcodeLogin` / `thirdPartyLogin` 三条在 FlyCms 后端都没有对应实现，点了只会报错。置空后按钮不再渲染。
+
+`tools/verify-ui.mjs` 用 CDP 直连后台逐条断言（6/6 通过）：无他人备案号、无 vben 版权字样、无未接通的手机号/扫码/第三方入口、**验证码仍保留**。最后一条是刻意的——验证码是 FlyCms 自己的登录安全机制，属于应用功能，不在清理范围内。
+
+## 17. 部署适配（七）：关掉上游的模板调试条
+
+上游 SQL 导出时系统配置里开着模板调试：`fly_config_web` 里有一行 `('900331','0','template_debug','1',NULL,'0')`。该开关打开时 `TemplateResolver.resolveAndExpose` 会往模板上下文写 `__tpl`，于是 `pc_theme/defalut/common/debug-bar.html` 在**每一页**左下角浮出一个角标：
+
+```
+TPL · index.html · default
+```
+
+它同时暴露模板文件名、主题名和模板查找链，既像调试版，也把「这是模板套出来的站」写在脸上——提审会被打回。
+
+修法不是改模板（那样每次同步上游都要重打补丁），而是在 `content/init-db.sh` 初始化末尾幂等地把它关掉：
+
+```bash
+mysql -h "$HOST" -u"$USER" "$DB" -e \
+  "UPDATE fly_config_web SET keyvalue='0' WHERE keycode='template_debug';" >/dev/null 2>&1 \
+  || log "关闭模板调试条失败（不致命）"
+```
+
+关闭后 `__tpl` 根本不进上下文，`debug-bar.html` 的 `<#if (__tpl)??>` 整段零输出，与「线上完全一致」——这是上游自己注释里写明的行为，所以不需要删文件。
+
+顺带一个技能库修复：`box-browser.mjs shots` 原来所有页面共用同一个标签页，某个重页面把标签页弄崩（`Page.captureScreenshot: Session closed`）会让整批出图归零、验收直接 S7 失败。已改成逐页 try/catch + 重建标签页重试一次，单页失败只记一行 `× 该页未出图`。
