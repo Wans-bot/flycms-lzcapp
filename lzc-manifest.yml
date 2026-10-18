@@ -17,9 +17,9 @@ usage: |
 application:
   subdomain: flycms
   routes:
-    - /=http://flycms.cloud.lazycat.app.flycms.lzcapp:80
+    - /=http://web.cloud.lazycat.app.flycms.lzcapp:80
   health_check:
-    test_url: http://flycms.cloud.lazycat.app.flycms.lzcapp:80/api/health
+    test_url: http://web.cloud.lazycat.app.flycms.lzcapp:80/api/health
     start_period: 300s
     timeout: 10s
     disable: false
@@ -79,10 +79,14 @@ services:
       - flycms-init
     environment:
       TZ: Asia/Shanghai
+      # 上游 application.yml 用 ${FLYCMS_DB_USER} / ${FLYCMS_DB_PASSWORD} 占位，这里直接喂它的原生变量名
+      FLYCMS_DB_USER: root
+      FLYCMS_DB_PASSWORD: '{{ printf "%.24s" (stable_secret "FLYCMS_DB_PASSWORD") }}'
       SPRING_DATASOURCE_URL: >-
         jdbc:mysql://flycms-db:3306/flycms?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: '{{ printf "%.24s" (stable_secret "FLYCMS_DB_PASSWORD") }}'
+      # 上游默认 2MB，后台上传封面图/附件会直接超限
+      SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: 64MB
+      SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 64MB
     binds:
       - /lzcapp/var/flycms-upload:/app/uploadfiles
       - /lzcapp/var/flycms-logs:/app/logs
@@ -94,3 +98,17 @@ services:
       interval: 10s
       timeout: 8s
       retries: 30
+
+  # 统一入口：/admin/ 出后台 SPA，其余反代到 flycms（门户前台与 /api）
+  web:
+    image: __FLYCMS_WEB_IMAGE__
+    depends_on:
+      - flycms
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q -O /dev/null http://127.0.0.1:80/admin/ || exit 1
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 20

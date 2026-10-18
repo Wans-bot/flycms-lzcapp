@@ -58,3 +58,38 @@
 - 构建走 **GitHub Actions 打镜像 → ghcr.io → 本地 `lzc-cli appstore copy-image` 搬官方源**（13ft 已验证过的链路），
   不用 `lzc-build.yml` 的 `embed:`（未验证路径）。
 - 先用**单服务 + mysql 两容器**跑通，admin SPA 单独评估。
+
+## 8. 部署适配（三个必须改的点）
+
+上游按「自己的域名 + 独立部署前端」写的配置，搬到盒子必须处理：
+
+1. **CORS 会把盒子域名判成跨域并 403**
+   `backend/src/main/java/com/flycms/config/CorsConfig.java` 用 `@Value("${flycms.cors.allowed-hosts:localhost,127.0.0.1}")`
+   拼 `http(s)://host[:*]` 白名单；盒子域名每个用户不同、构建期不可知。
+   反代后后端看到 `http` + 盒子域名，浏览器给的 Origin 是 `https` + 盒子域名，
+   Spring 的 `CorsUtils.isCorsRequest` 会判定为跨域 → 命中白名单失败。
+   **对策**：nginx 单入口处 `proxy_set_header Origin "";`，让后端按同源处理；
+   跨站防护交给 CSRF 双提交。
+
+2. **CSRF 是双提交 Cookie 模型，与 axios 默认值刚好对上**
+   `backend/src/main/java/com/flycms/filter/CsrfFilter.java`：安全方法下发 `XSRF-TOKEN` Cookie
+   （`httpOnly=false`，Path=/，会话级），非安全方法比对 Cookie 与请求头 `X-XSRF-TOKEN`；
+   仅对 `config.pathPrefix`（默认 `/api/`）生效。
+   axios 默认 `xsrfCookieName='XSRF-TOKEN'` / `xsrfHeaderName='X-XSRF-TOKEN'`，与之一致，
+   但前提是 SPA 与后端同源（本方案同源），且**首个不安全请求前必须先发过一个 GET**把 Cookie 种下
+   ——登录页本来就先取图形验证码，天然满足。
+
+3. **multipart 默认只有 2MB**
+   `spring.servlet.multipart.max-file-size: 2MB`，后台上传封面图必超。用
+   `SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE` / `..._MAX_REQUEST_SIZE` 提到 64MB，
+   nginx 侧 `client_max_body_size 200m`。
+
+## 9. 后台 SPA 的托管方案
+
+- 上游没有把后台打进后端：`backend/views/` 只有 `pc_theme`，`resources` 里也没有静态后台资源。
+- 因此新增 `Dockerfile.web`：node 24 构建 `frontend`（pnpm 11.16.0）→ nginx 托管 `apps/web-antd/dist`。
+- 构建期覆盖两个变量：`VITE_GLOB_API_URL=/api`、`VITE_BASE=/admin/`
+  （Vite 规则：`process.env` 里已存在的 `VITE_*` 优先级高于 `.env.production`）。
+- SPA 是 **hash 路由**（`VITE_ROUTER_HISTORY=hash`），所以挂在 `/admin/` 子路径不需要服务端 rewrite，
+  nginx 只需 `try_files $uri $uri/ /admin/index.html`。
+- nginx 同时承担 `/` 与 `/api/` 到 `flycms:80` 的反代，成为唯一入口。
