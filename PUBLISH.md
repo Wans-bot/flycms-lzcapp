@@ -1,6 +1,6 @@
 # FlyCms 商店提审材料
 
-生成时间：2026-10-18　　最终产物：`/tmp/flycms-build/application.lpk`（sha256 `715fab59a970db8ac480ddd97b777307e53ad9970ffe3a6b724e8e69914b70a0`，2.9M）
+生成时间：2026-10-18　　最终产物：`/tmp/flycms-build/application.lpk`（sha256 `0f5b55f4203b3a73b4f33f0c96d9b00738fff41d061eaebb95ae0f4be9f10a86`，2.9M）
 
 ---
 
@@ -14,7 +14,7 @@
 | 许可 | **MIT**（已核实：GitHub API `license.spdx_id=MIT`；先前误写 AGPL-3.0 已更正） |
 | 主页 | `https://github.com/sunkaifei/FlyCms` |
 | 支持 PC | 是 |
-| 支持移动端 | **否**（本包只含 PC 门户主题，未含上游需要额外渲染服务的 H5 主题，移动截图因此为 0） |
+| 支持移动端 | **否**（`support_mobile: false` + `unsupported_platforms: [ios, android]`；本包只含 PC 门户主题，未含上游需要额外渲染服务的 H5 主题，移动截图因此为 0） |
 | 分类 | 建站 / 网站建设类（若下拉里没有，选最接近的「工具 - 效率」类） |
 
 **简介（brief）**
@@ -63,6 +63,8 @@ FlyCms 是一套开箱即用的企业建站系统。门户首页、文章与自�
 | 截图 4（后台登录页） | `/home/wans/flycms-lzcapp/docs/screenshots/04-admin-login.png` |
 
 4 张均为 1920×1080 实机截图，内容为中文界面真实页面，无模板调试角标、无 Lorem 占位。PC 位要求 2–8 张，已满足；移动位因声明不支持移动端，按要求提交 0 张。
+
+截图 4 需特别注意：验收脚本走容器直连取图时页面不带注入脚本（验收日志会显示「注入 0 个」），那种图里账号密码框是空的，不能当素材。这张是从真实域名 `https://flycms.wans.heiyu.space/admin/` 拍的，账号 `flycms` 与密码已由注入自动填好、验证码留空待手输、无红框报错。
 
 ---
 

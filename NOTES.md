@@ -326,3 +326,62 @@ mysql -h "$HOST" -u"$USER" "$DB" -e \
 同时 `publish` 依赖 `lzc-cli appstore login` 产生的本地凭据。本机 `~/.config` 下只有 lpk 工具的环境变量文件，没有商店 token；`copy-image` 与 `my-images` 能用，是因为它们只走 LazyCat 镜像仓库那条链路，与开发者身份无关。
 
 所以最后一步分两段：用户执行 `lzc-cli appstore login` 并在开发者中心建应用 `cloud.lazycat.app.flycms`（字段照 `PUBLISH.md` 第一节填），之后由 `publish` 完成提审。
+
+## 23. 提审前独立复核：注入账号真的能登录吗
+
+`lzc-manifest.yml` 的 `builtin://simple-inject-password` 里写死了 `flycms / admin123`。这个值如果错，审核点开后台就是登录失败——「没有密码注入」正是历史上被驳回多次的理由（alfio #19806、qwenpaw #17901、junyaoktv #20015）。
+
+所以不能只依赖"记录里写着已验证"。取了种子数据里那条管理员的真实哈希，单独做一次校验：
+
+```
+fly_admin: admin_name='flycms', status='1',
+password='$2a$10$VQAFqEn7MizVIrJ1nrqOt.i45X77uamlM3Z8Ea/F0sgQESqrQzM16'
+```
+
+本机没有 bcrypt 库（无 pip、无 python bcrypt、镜像里也没有 php——后端其实是 Java Spring Boot，不是 PHP），最后用 `npm install bcryptjs` 在 `/tmp/bcchk` 里验：
+
+```
+admin123   MATCH
+123456     no
+flycms     no
+admin      no
+password   no
+```
+
+结论：`flycms / admin123` 正确，注入可用。另外种子数据里还有个上游的端到端测试账号 `zzz_e2e_test`（未知口令、status=1），由 `content/init-db.sh` 里的 `DELETE FROM fly_admin WHERE ...` 清掉，不留在成品里。
+
+## 24. 平台声明：不能只有 `support_mobile: false`
+
+`support_mobile: false` 只是商店素材的口径（移动截图必须为 0），并不会让客户端拦截。要真正告诉系统"这个应用在手机上别打开"，得另外声明 `unsupported_platforms`（官方 `advanced-platform.md`：LPK v2 放在 `package.yml` 顶层，取值 `ios` / `android` / `linux` / `windows` / `macos` / `tvos`）。
+
+已批准的同类包（hindsight、librenms、hcpms）都是两者成对出现，本包原来漏了这一项，补上：
+
+```yml
+unsupported_platforms:
+  - ios
+  - android
+```
+
+补完后重新 `project release`，LPK 从 `715fab59…b70a0` 变为 `4d27da71…d3522`（镜像未变，只是 `package.yml` 多了一段），并重跑 `--fresh-data` 全链路验收。
+
+## 25. 注入别自动提交，以及商店图必须走域名拍
+
+两个都是"图对了但功能不对"的坑，都出在后台登录页。
+
+**坑一：`simple-inject-password` 默认会自动提交。** 注入本来把 `flycms` / `admin123` 填得好好的，但填完立刻点了登录，而 FlyCms 登录带图形验证码前置校验——空验证码必然被拦，页面于是停在输入框红框 + 错误提示的状态。用户一进后台看到的就是一个报错页。修法是显式关掉：
+
+```yml
+params:
+  user: flycms
+  password: admin123
+  autoSubmit: false      # 验证码要人手输，别抢着提交
+  onlyFillEmpty: true
+```
+
+关掉后实测：`username` 字段 value=`flycms`、`password` 字段 value=`admin123`、验证码字段空、`flycms-admin-autofill:0` 的 `enabled` 为 true，页面无红框。参数合法性来自 `references/official/advanced-inject-passwordless-login.md` 的附录参数表（`autoSubmit`、`onlyFillEmpty` 都在表里，默认分别是 `true` / `false`）。
+
+**坑二：验收出的图里注入是空的。** `box-accept.mjs` 跑 `--base auto` 时走容器直连（`http://172.28.3.198`），页面里根本没有 `/_lzc/injects/*` 脚本——验收日志那行「入口链路含 lzcinit 注入：14023 字节，**注入 0 个**」就是证据。这意味着**验收截图不能直接当商店素材**，凡是依赖注入的页面（这里的后台登录页）都得从真实域名重拍。
+
+做法：`lpk-manager install` 装上后，用 CDP 连盒子上的 Chrome，访 `https://flycms.wans.heiyu.space/admin/`，显式设 `1920x1080` 视口截图；截图前先扫一遍页面文本，命中「登录失败／验证码错误／错误／Error／undefined／{{／商城」就报警——把报错态交上去等于自曝缺陷。
+
+另一个顺带发现：这条不实宣传是**我自己的补丁写进去的**。`web/patch-login.mjs` 早先把 vben 宣传语换成了「内容、会员与**商城**一体化后台」，而「商城」正是同一轮里我从 `package.yml` 删掉的虚构功能。现在该脚本除了替换文案，还会断言文案里不得出现「商城」——构建期就拦住，不靠人记。
