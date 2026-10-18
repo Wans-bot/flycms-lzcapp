@@ -164,3 +164,39 @@ Unknown column 'use_content'  → Unknown column 'relate_model'  → Unknown col
   还有一行 `${q.shortUrl}` 的动态链接属于列表项，不能一起删，所以这一路只删「不含 `${` 的行」并单独断言。
   两条都删完再各断一次 grep 为 0。导航里不出现问答，好过让用户点到 404；
   将来上游改了模板结构，行数跌破下界就会构建失败提醒，不会静默漏改。
+
+## 14. 部署适配（五）：后台 SPA 的 base 与 turbo 的 env 剥离
+
+后台白屏排查的完整链条，坑在「HTTP 200 但页面是空的」，回归脚本按状态码判定，测不出来。
+
+症状：
+- `GET /admin/` 返回 200，`<title>FlyCms Console</title>`，看起来完全正常。
+- 截图只有 14KB，实际是一片空白。
+- 页面 HTML 里引用的是 `/js/xxx.js`、`/_app-config-5.8.0-xxx.js`，**没有 `/admin/` 前缀**。
+
+根因链：
+1. `Dockerfile.web` 原本用「过程环境变量」注入 `VITE_BASE=/admin/`。
+2. 上游的 `build:antd` 实际是 `pnpm run build --filter=@vben/web-antd`，落到根脚本 `build`，
+   而根脚本是 **`turbo build`**。
+3. turbo 默认 strict 模式会**剥掉未在 `globalEnv` 声明的环境变量**，上游 `turbo.json` 的
+   `globalEnv` 只有 `NODE_ENV`，所以 `VITE_BASE` / `VITE_GLOB_API_URL` 根本到不了 vite。
+4. `@vben/vite-config` 的 `loadEnv()` 是用 **dotenv 读 `.env` 文件**，`base: getString(VITE_BASE, '/')`
+   拿到的仍是 `.env.production` 里的 `/`。
+5. base 是 `/`，SPA 就去请求 `/js/*`，而 nginx 的 `/admin/` location 只管 `/admin/**`，
+   这些请求落到 `location /` 被反代给后端，后端没有 `/js/*` 静态资源 → 404 → 白屏。
+
+修法：不再依赖 env 透传，直接在构建期改写文件，并加一条构建期断言。
+
+```
+RUN cd apps/web-antd \
+ && sed -i 's|^VITE_BASE=.*|VITE_BASE=/admin/|' .env.production \
+ && sed -i 's|^VITE_GLOB_API_URL=.*|VITE_GLOB_API_URL=/api|' .env.production \
+ && pnpm build:antd
+RUN grep -q '"/admin/' /src/frontend/apps/web-antd/dist/index.html || (echo "base 不是 /admin/"; exit 1)
+```
+
+最后那条断言是这次的关键：白屏在 HTTP 层完全看不出来，只有检查产物里的引用前缀能在构建期断死。
+
+另外 nginx 侧还有两个细节（`web/nginx.conf`）：
+- `location = /admin` 必须 301 到 `/admin/`，否则目录无索引会 403。
+- `/admin/index.html` 要 `Cache-Control: no-cache`，否则升级后旧壳子还在加载已被删掉的 chunk。
