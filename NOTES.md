@@ -246,3 +246,15 @@ mysql -h "$HOST" -u"$USER" "$DB" -e \
 关闭后 `__tpl` 根本不进上下文，`debug-bar.html` 的 `<#if (__tpl)??>` 整段零输出，与「线上完全一致」——这是上游自己注释里写明的行为，所以不需要删文件。
 
 顺带一个技能库修复：`box-browser.mjs shots` 原来所有页面共用同一个标签页，某个重页面把标签页弄崩（`Page.captureScreenshot: Session closed`）会让整批出图归零、验收直接 S7 失败。已改成逐页 try/catch + 重建标签页重试一次，单页失败只记一行 `× 该页未出图`。
+
+## 18. 商店素材：图标升到 512×512
+
+本地 `icon.png` 原为 **256×256**（4934 字节），而商店列表位通常按 512 显示，256 会被放大发虚。已换成 **512×512**（19634 字节）。
+
+做法是「放大」而不是「重画」：这个图标是纯扁平渐变（垂直 `rgb(45,105,252)` → `rgb(32,88,227)` → `rgb(19,72,203)`）+ 居中白色几何 `F`，属于可无损重采样的图形；重画等于换 logo，与「保持上游品牌一致」冲突。
+
+本机没有 PIL / ImageMagick / rsvg / inkscape / cairosvg / sharp，所以借 Chromium 自己的缩放器：`/tmp/make-icon512.mjs` 把原图按 256 CSS 像素摆放、`deviceScaleFactor: 2` 截屏，直接得到 512 物理像素；`omitBackground: true` + 透明 `body` 保住原图的透明圆角（四角 alpha 实测 0.000，没有被补白底）。
+
+复核两点：`icon.png` 头部宽高 = `(512, 512)`；LPK 包内 `icon.png` 同为 512×512（`tar -xf application.lpk` 后核对）。图标变更后 LPK 重新打包，sha256 变为 `5b52cbce13ad5d96aacef59117c9db1734b2eef4f0d1d28f782241f8a0693140`。
+
+截图沿用 `docs/screenshots/` 下 4 张 1920×1080（PC 位 2–8 张的要求已满足，移动位因 `support_mobile: false` 不提交）。
