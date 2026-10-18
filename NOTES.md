@@ -385,3 +385,16 @@ params:
 做法：`lpk-manager install` 装上后，用 CDP 连盒子上的 Chrome，访 `https://flycms.wans.heiyu.space/admin/`，显式设 `1920x1080` 视口截图；截图前先扫一遍页面文本，命中「登录失败／验证码错误／错误／Error／undefined／{{／商城」就报警——把报错态交上去等于自曝缺陷。
 
 另一个顺带发现：这条不实宣传是**我自己的补丁写进去的**。`web/patch-login.mjs` 早先把 vben 宣传语换成了「内容、会员与**商城**一体化后台」，而「商城」正是同一轮里我从 `package.yml` 删掉的虚构功能。现在该脚本除了替换文案，还会断言文案里不得出现「商城」——构建期就拦住，不靠人记。
+
+## 26. 最终验收（v26）与工具链修复
+
+用**修好的**验收脚本跑最后一遍全链路（`--fresh-data`，从干净数据卷开始）：
+
+- 结果 `verdict: passed`，19 步 0 失败；S3 远端 sha256 与本地 `0f5b55f4…f10a86` 一致；S5 5 容器 Up 等待 73s；S7 26 页 0 问题页、PC 4 张；S7b 应用探针退出码 0；S9 卸载后无残留容器。
+- 证据 `/tmp/flycms-accept26/`。
+
+同时修掉一个会污染宿主机的工具链 bug：`工具箱/box/box-harness.sh` 里 `NAME` 统一按 `up` 的位置取 `${4:-harness}`，而 `down` 只传两个参数，于是 `NAME` 回落到默认值，删的是 `harness-tls`/`harness-chrome`（都不存在）——每跑一次验收就在盒子上漏两个容器，本轮累积了 18 个 `-tls`。验收里那步断言原本写死 `true`，所以从未报过。
+
+改了两处：`box-harness.sh` 按 action 分别解析参数；`lib/box-ops.mjs` 新增 `harnessLeftovers(host, name)`，`box-accept.mjs` 的 S9 用它真检查残留，非空即判失败。用两个假容器验证过：`down` 前残留 2 个、`down` 后 0 个。
+
+验收结束后盒子已回到干净状态：harness 残留 0、flycms 容器 0、已装应用 0。
