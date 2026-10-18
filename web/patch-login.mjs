@@ -70,7 +70,7 @@ patch('apps/web-antd/src/views/_core/authentication/login.vue', [
 ]);
 
 // 3) 换掉语言包里的模板宣传语：登录页会原样显示这两句，留着就是「这是 vben 模板」的自证。
-patch('packages/locales/src/langs/zh-CN.json', [
+patch('packages/locales/src/langs/zh-CN/authentication.json', [
   {
     from: '开箱即用的大型中后台管理系统',
     to: 'FlyCms 网站管理系统',
@@ -95,7 +95,7 @@ const login = readFileSync(
 if (!login.includes(':show-third-party-login="false"')) {
   throw new Error('[patch-login] login.vue 演示登录入口未如期关闭');
 }
-const zh = readFileSync(`${root}/packages/locales/src/langs/zh-CN.json`, 'utf8');
+const zh = readFileSync(`${root}/packages/locales/src/langs/zh-CN/authentication.json`, 'utf8');
 if (zh.includes('跨组件库的前端模版') || zh.includes('开箱即用的大型中后台管理系统')) {
   throw new Error('[patch-login] zh-CN.json 模板宣传语未如期替换');
 }
