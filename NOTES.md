@@ -398,3 +398,26 @@ params:
 改了两处：`box-harness.sh` 按 action 分别解析参数；`lib/box-ops.mjs` 新增 `harnessLeftovers(host, name)`，`box-accept.mjs` 的 S9 用它真检查残留，非空即判失败。用两个假容器验证过：`down` 前残留 2 个、`down` 后 0 个。
 
 验收结束后盒子已回到干净状态：harness 残留 0、flycms 容器 0、已装应用 0。
+
+## 27. 两套验收脚手架不能混用
+
+知识库和工作副本里存在两套 `box-harness.sh`，实现路线不同：
+
+| | 本地 `工具箱/box/box-harness.sh` | 上游 `toolbox/box/box-harness.sh` |
+| --- | --- | --- |
+| TLS 前置代理到 | **应用自己的网关容器**（走应用 compose 网络） | 宿主机 ingress `172.18.0.1:80` |
+| 鉴权 | 不需要 | `hc api_auth_token gen` 生成的 `Lzc-Api-Auth-Token` |
+| 容器集 | `-tls`、`-chrome` | `-tls`、`-chrome`、`-cdp-proxy` |
+| 在这台盒子上 | 可用 | 入口探测返回 **0 字节** |
+
+上游仓库里只有 `toolbox/` 目录，而它的 `box-ops.mjs` 却指向 `工具箱/box/box-harness.sh`——那个路径在上游不存在，`harnessUp/harnessDown` 读脚本时会直接 ENOENT。本地能跑，是因为这份工作副本里恰好残留着一份 `工具箱/` 副本（且缺 down 的参数修复），于是"路径错"和"参数错"互相掩盖。
+
+结论与已做的处理：
+
+- 上游修复（已提交 `07b13ccd`、`bb079854`）：`HARNESS_SCRIPT` 指向 `toolbox/`；新增 `harnessLeftovers()`；S9 断言由写死的 `true` 改为真检查残留（3 容器 + 1 网络）。
+- 本地**保持指向 `工具箱/`**，并在代码里写明原因。曾把它改成 `toolbox/`，结果验收 v27 在 S6 入口探测就 0 字节失败——两套设计不通用，不能为了"对齐上游"混用。
+- 本地那份 `工具箱/box/box-harness.sh` 的 `down` 参数错位已单独修好，这是容器泄漏的直接原因。
+- 验收脚本的 `step()` 失败时直接 `process.exit(2)`，而 `harnessDown` 只写在成功分支的 S9 里——**任何中途失败都不清理**。这些残留容器挂在应用 compose 网络上会占住端点，导致随后的重装起不来容器，表现为「已安装、数据卷在、但 0 个容器」，而且不报错。已在失败分支里补 `harnessDown` + 残留核对，结果写进 `RESULT.json.abortCleanup`；`--keep` 时保留现场。
+- 验证方式：手工造 `acc-abortdemo-tls`/`-chrome`，用错域名触发 S7 失败，脚本输出「已拆除脚手架」、退出码 2、容器全部拆掉。
+
+三个「不报错」叠在一起，才让这个每轮都在污染宿主机的 bug 连续通过十几轮验收：写死的 `true` 掩盖容器泄漏，中止路径不清理掩盖网络端点占用，`waitAppReady` 轮询在超时前不报错又掩盖了「0 个容器」。
