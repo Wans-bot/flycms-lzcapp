@@ -134,7 +134,7 @@ mysql -h "$HOST" -u"$USER" "$DB" -e \
 # 加一行未知 keycode 会让后台「网站设置」页多出一个陌生字段。表不存在时 COUNT 会报错，
 # 这里按「未补齐」处理（`|| echo 0`），正好让首次执行跑起来。
 seeded=$(mysql -h "$HOST" -u"$USER" -N -B -e \
-  "SELECT COUNT(*) FROM \`${DB}\`.fly_seed_marker WHERE k='demo_content_v1';" 2>/dev/null || echo 0)
+  "SELECT COUNT(*) FROM \`${DB}\`.fly_seed_marker WHERE k='demo_content_v2';" 2>/dev/null || echo 0)
 seeded=$(echo "${seeded:-0}" | tr -d '[:space:]')
 if [ "$seeded" = "0" ]; then
   log "补齐演示内容（seed-demo.sql）"

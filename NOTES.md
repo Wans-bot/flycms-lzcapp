@@ -273,8 +273,18 @@ mysql -h "$HOST" -u"$USER" "$DB" -e \
 | 摘要缺失 | `description`、`keywords` 全为 `NULL`，详情页 `<meta name="description">` 因此为空 |
 | 错字 | 「雪崩算法」应为「雪花算法」（Snowflake） |
 
-另外确认了两件不必做的事：主题列表页那个蓝色渐变封面块是**纯 CSS 装饰**，`articles/list.html` 与 `cmodel/list.html` 里根本没有 `img`/`thumbnail`，`fly_images` 表 0 行、`/app/uploadfiles` 空目录——所以「给文章配缩略图」对观感没有任何影响，不用做。
+另外确认了两件不必做的事。一是主题列表页那个蓝色渐变封面块：`/app/views/templates/pc_theme/defalut/common/macros.html:29` 在 `url` 为空时渲染 `<span class="ph" data-label="${PH_LABELS[mc]}">`，样式在 `/app/views/static/skin/pc_theme/defalut/css/portal.css:639` 的 `.ph`——深蓝渐变 + `::before` 的金色径向光晕与斜向高光 + `::after` 的字距 0.3em 模型名，源码注释写着「封面占位（无图时的 CSS 图案，零请求；避免破图）」。这是上游刻意的无图占位设计，不是破图，**不要再改它**；觉得四张排在一起单调是「文章都没有封面图」的数据问题，不是样式问题。二是给文章配缩略图：`articles/list.html` 与 `cmodel/list.html` 里根本没有 `img`/`thumbnail`，`fly_images` 表 0 行、`/app/uploadfiles` 空目录，配了也不显示。
 
 处理方式见 `content/seed-demo.sql`：删掉上述 4 条无效数据（2 条空测试稿 + 2 条重复稿），给剩下 12 篇补 316~446 字符的正文、摘要与关键词，并修正错字。幂等靠独立标记表 `fly_seed_marker`（刻意不写 `fly_config_web`——那是应用的站点配置表，塞一行未知 keycode 会让后台「网站设置」页多出一个陌生字段），由 `content/init-db.sh` 在库导入完成后执行一次，用户后来在后台改过的正文不会被容器重启覆盖。
 
 顺带一个坑：应用对**不存在的短链返回 200**（软 404，渲染空态页而不是 404 页）。所以删掉 `YjaqAv` 之后，旧截图对应的 URL 不会报错、只是继续显示空正文——只靠状态码检查发现不了，必须看正文内容。第 3 张截图改用 `ar0001aa`（自定义模型系统上线公告，88 阅读）。
+
+## 20. 两个验收陷阱：数据卷不随卸载清空、mysql 客户端默认 latin1
+
+**卸载重装不等于全新安装。** `lzc-cli app uninstall` 之后重装，`/lzcapp/var` 下的数据卷仍然在，初始化脚本看到表数够就直接跳过。第一次踩到时看到的现象是：改完 seed 重装，页面还是老的乱码内容——数据根本没重新导入。判断依据很直接：全新导入那轮 `S5 容器就绪` 等了 42 秒，复用数据那轮只等了 11 秒。要验证首次初始化链路，必须先 `DROP DATABASE`（或清掉数据卷）再装。
+
+**mysql 客户端在容器内默认按 latin1 握手。** `seed-demo.sql` 是 UTF-8，但重定向喂给 `mysql` 时没有声明字符集，服务端按 latin1 收下、再以 utf8mb4 存表，结果是双重编码——正文渲染成 `è+ä'@§à'%oæ...`，而 `HEX()` 里能清楚看到 `C3A8 E280A1` 这种「UTF-8 里再装一次 mojibake」的字节。上游主 dump 自带了 `SET NAMES utf8mb4` 所以一直没事，自己写的补丁文件必须自己声明。两处都补了：`seed-demo.sql` 顶部加 `SET NAMES utf8mb4`，`init-db.sh` 的两条文件导入加 `--default-character-set=utf8mb4`。
+
+有一个容易骗过自己的细节：排查时用 `ssh lzcbox` 查库，正常的 `中文标题` 全打成了 `????`，而乱码行反而能正常显示——因为双重编码后每个字符都落在 Latin-1 可打印区间。**终端里的 `????` 不代表数据坏，能打出来的乱码才是数据坏了。**
+
+**商店版本号必须过 semver 校验。** `lzc-cli project release` 的 lint 会拦下 `2026.09.28-1`：`App Store submission requires a valid semver version`。semver 禁止数字段带前导零，`09` 非法，改成 `2026.9.28-1` 才通过。上游 `backend/pom.xml` 只有 `1.0-SNAPSHOT`、无 tag 也无 release，所以采用「快照日期-打包修订号」，与商店里 `2.8.0-3`、`1.21.5-1` 这类写法一致。
