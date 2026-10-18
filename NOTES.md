@@ -152,12 +152,15 @@ Unknown column 'use_content'  → Unknown column 'relate_model'  → Unknown col
 
 上游 demo 数据只带 4 个模型（`images` / `downloads` / `articles` / `testdemo`），没有「问答」模型，
 也没有对应的 `fly_cmodel_questions` 内容表；但主题把 `/questions/` 写成导航硬链接
-（`common/header.html` 一行、`common/footer.html` 两行），于是三个入口点向 404，
+（`common/header.html` 一行、`common/footer.html` 三行、首页 `index.html` 三行），于是入口点向 404，
 而 `list-questions.html` 里的 `<@fly_list_model model="questions" orderby="weight">` 还会在日志里刷
 `Unknown column 'weight'`。
 
 两条路都试过：
 - 补数据：手工插一行 `fly_model` 能消掉 404，但随后报 `Unknown column 'weight'`，
   等于要自己造表、造字段、造内容，属于替上游编数据，不做。
-- 删链接：在 `Dockerfile` 构建期把这三行 `href="/questions/"` 删掉，带行数校验（必须正好 3 行）。
-  导航里不出现问答，好过让用户点到 404；将来上游补了模型，这段补丁自然失效（行数为 0 时这里会失败提醒）。
+- 删链接：在 `Dockerfile` 构建期删掉这些硬链接行。header 与 footer 共 4 行，断言 `-ge 3`；
+  首页 `index.html` 另有 3 行（hero 快捷入口 + 「问答社区」区块标题），但同一文件里
+  还有一行 `${q.shortUrl}` 的动态链接属于列表项，不能一起删，所以这一路只删「不含 `${` 的行」并单独断言。
+  两条都删完再各断一次 grep 为 0。导航里不出现问答，好过让用户点到 404；
+  将来上游改了模板结构，行数跌破下界就会构建失败提醒，不会静默漏改。
