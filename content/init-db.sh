@@ -21,7 +21,7 @@ EXPECTED="${LZC_EXPECTED_TABLES:-80}"
 STATE=fly_lzc_schema_state
 log() { echo "[flycms-init] $*"; }
 
-mysql_q() { mysql -h "$HOST" -u"$USER" -N -B "$@"; }
+mysql_q() { mysql --default-character-set=utf8mb4 -h "$HOST" -u"$USER" -N -B "$@"; }
 
 table_count() {
   mysql_q -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB}';" 2>/dev/null || echo "err"
@@ -51,7 +51,7 @@ else
 
   log "导入 ${SQL}"
   # 输出落盘再看退出码：管道接 tail 会把 tail 的状态当成 mysql 的状态。
-  if mysql -h "$HOST" -u"$USER" "$DB" < "$SQL" > /tmp/flycms-import.log 2>&1; then
+  if mysql --default-character-set=utf8mb4 -h "$HOST" -u"$USER" "$DB" < "$SQL" > /tmp/flycms-import.log 2>&1; then
     log "基线导入成功"
   else
     log "基线导入失败，末尾 20 行："
@@ -139,7 +139,7 @@ seeded=$(echo "${seeded:-0}" | tr -d '[:space:]')
 if [ "$seeded" = "0" ]; then
   log "补齐演示内容（seed-demo.sql）"
   # 同样落盘再看退出码：命令行不接管道，退出码才是 mysql 自己的。
-  if mysql -h "$HOST" -u"$USER" "$DB" < /lzcapp/pkg/content/seed-demo.sql > /tmp/flycms-seed.log 2>&1; then
+  if mysql --default-character-set=utf8mb4 -h "$HOST" -u"$USER" "$DB" < /lzcapp/pkg/content/seed-demo.sql > /tmp/flycms-seed.log 2>&1; then
     log "演示内容已写入"
   else
     log "演示内容写入失败，日志末尾 15 行："

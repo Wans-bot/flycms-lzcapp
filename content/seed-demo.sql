@@ -11,6 +11,12 @@
 -- 幂等：靠独立标记表 fly_seed_marker（由 init-db.sh 在库已导入后判断），只在首次执行；
 -- 用户后续在后台编辑正文不会被覆盖。刻意不写进 fly_config_web —— 那是应用的站点配置表，
 -- 塞一行未知 keycode 会让后台「网站设置」页多出一个陌生字段。
+--
+-- 字符集：mysql 客户端在容器内的 POSIX locale 下默认按 latin1 握手，本文件是 UTF-8，
+-- 不声明就会被当成 latin1 收下再存成 utf8mb4，结果是双重编码的乱码（正文显示成「è+ä'@§à」）。
+-- 主 dump 自己带 SET NAMES utf8mb4 所以没事，这里必须自己声明。
+/*!40101 SET NAMES utf8mb4 */;
+SET character_set_client = utf8mb4;
 CREATE TABLE IF NOT EXISTS fly_seed_marker (
   k varchar(64) NOT NULL,
   v varchar(64) DEFAULT NULL,

@@ -1,7 +1,7 @@
 package: cloud.lazycat.app.flycms
-version: 1.0.0
+version: 2026.09.28-1
 name: FlyCms
-description: 私有化内容管理系统：栏目、文章、会员、商城与 PC 门户主题开箱可用，后台所见即所得。
+description: 私有化内容管理系统：栏目、文章、下载、图集、站内搜索与会员体系开箱可用，附一套可直接使用的 PC 门户主题。
 author: sunkaifei
 license: AGPL-3.0
 homepage: https://github.com/sunkaifei/FlyCms
@@ -16,7 +16,7 @@ permissions:
 locales:
   zh-CN:
     name: FlyCms 内容管理系统
-    description: 私有化的内容管理系统：栏目与文章管理、会员体系、附件与商品模块，配一套可直接使用的 PC 门户主题，适合搭个人站点或企业内部信息门户。
+    description: 私有化的内容管理系统：栏目与文章管理、下载与图集、站内搜索、会员体系，配一套可直接使用的 PC 门户主题，适合搭个人站点或企业内部信息门户。
     usage: |
       FlyCms 分「门户前台」和「管理后台」两部分：打开应用看到的是门户前台，内容都在后台维护。
 
@@ -29,7 +29,7 @@ locales:
       日常使用：
 
       - 栏目：后台建频道树，控制门户前台的一级/二级导航。
-      - 文章：支持封面图、富文本、置顶与推荐位，发布后前台即时可见。
+      - 文章：富文本编辑，支持置顶与推荐位，发布后前台即时可见。
       - 会员：前台注册的账号在后台统一管理，可分组与禁用。
       - 附件：上传的图片与文件走本机存储，不依赖第三方图床。
 
@@ -43,7 +43,7 @@ locales:
       - 移动端暂不支持，请使用桌面端访问。上游的 H5 主题是另一套需要额外渲染服务的工程，本包未包含。
   en-US:
     name: FlyCms Content Management System
-    description: Self-hosted CMS with channel and article management, membership, attachments and a ready-to-use PC portal theme.
+    description: Self-hosted CMS with channels, articles, downloads, galleries, site search and membership, plus a ready-to-use PC portal theme.
     usage: |
       FlyCms has two parts: the public portal (what you see when the app opens) and the admin console.
 
