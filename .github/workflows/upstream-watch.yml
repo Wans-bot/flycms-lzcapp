@@ -1,0 +1,61 @@
+name: Upstream Watch
+
+# 上游 FlyCms 有新提交时：把最新提交号写进 .upstream-ref，patch 位 +1，然后直接触发
+# LPK 流水线用新版本号构建并提审。没有变化就什么都不做。
+on:
+  schedule:
+    - cron: "43 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 取上游最新提交
+        id: up
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha=$(gh api repos/sunkaifei/FlyCms/commits/master --jq .sha)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          old=$(cat .upstream-ref 2>/dev/null || echo "")
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+          echo "上游最新 ${sha:0:12} / 记录中 ${old:0:12}"
+
+      - name: 无变化则结束
+        if: steps.up.outputs.sha == steps.up.outputs.old
+        run: echo "上游无新提交，跳过。"
+
+      - name: 递增版本号并提交
+        if: steps.up.outputs.sha != steps.up.outputs.old
+        id: bump
+        run: |
+          set -euo pipefail
+          old=$(grep -m1 '^version:' package.yml | awk '{print $2}')
+          base=${old%%-*}
+          major=$(echo "$base" | cut -d. -f1)
+          minor=$(echo "$base" | cut -d. -f2)
+          patch=$(echo "$base" | cut -d. -f3)
+          new="$major.$minor.$((patch+1))"
+          sed -i "s|^version: .*|version: $new|" package.yml
+          echo "${{ steps.up.outputs.sha }}" > .upstream-ref
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.yml .upstream-ref
+          git commit -m "chore: 上游 ${new} 适配（FlyCms ${{ steps.up.outputs.sha }}）"
+          git push
+          echo "version=$new" >> "$GITHUB_OUTPUT"
+          echo "新版本: $new"
+
+      - name: 触发 LPK 构建与提审
+        if: steps.up.outputs.sha != steps.up.outputs.old
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run lazycat.yml -f operation=publish-official -f version="${{ steps.bump.outputs.version }}"
