@@ -23,7 +23,7 @@ stores:
     changelog_locales:
       - zh
       - en
-    enabled: true
+    enabled: false  # 待真机验收通过后改回 true
     skip_if_version_exists: true
     create_if_missing: false
   private:
