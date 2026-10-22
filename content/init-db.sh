@@ -16,7 +16,7 @@ MIG_DIR="${LZC_MIGRATION_DIR:-/lzcapp/pkg/content/sql/migrations}"
 DB="${LZC_DB_NAME:-flycms}"
 DONE=/tmp/init-db.done
 # 改动基线或迁移后必须递增，容器重启时才会按新版本重建。
-REV="${LZC_SCHEMA_REV:-3}"
+REV="${LZC_SCHEMA_REV:-4}"
 EXPECTED="${LZC_EXPECTED_TABLES:-80}"
 STATE=fly_lzc_schema_state
 log() { echo "[flycms-init] $*"; }
