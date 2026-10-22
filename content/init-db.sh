@@ -12,11 +12,16 @@ set -u -o pipefail
 HOST="${LZC_DB_HOST:-flycms-db}"
 USER="${LZC_DB_USER:-root}"
 SQL="${LZC_SQL_FILE:-/lzcapp/pkg/content/sql/flycms.sql}"
-MIG_DIR="${LZC_MIGRATION_DIR:-/lzcapp/pkg/content/sql/migrations}"
+SQL_DIR="$(dirname "$SQL")"
+# 迁移目录有两个可能位置：sql/migrations/ 与直接平铺在 sql/ 下（0*.sql）。
+# 原因：CI 里打包 content 用的新打包器会把 sql/migrations/ 这种二级子目录整个漏掉
+# （2026-10-22 实测：本地 lzc-cli 打得出、GitHub Action 打出来的包里没有），
+# 所以迁移文件同时平铺一份到 sql/ 下，这里两处都扫，重复执行靠 IF NOT EXISTS 兜住。
+MIG_DIR="${LZC_MIGRATION_DIR:-$SQL_DIR/migrations}"
 DB="${LZC_DB_NAME:-flycms}"
 DONE=/tmp/init-db.done
 # 改动基线或迁移后必须递增，容器重启时才会按新版本重建。
-REV="${LZC_SCHEMA_REV:-4}"
+REV="${LZC_SCHEMA_REV:-5}"
 EXPECTED="${LZC_EXPECTED_TABLES:-80}"
 STATE=fly_lzc_schema_state
 log() { echo "[flycms-init] $*"; }
@@ -70,7 +75,7 @@ else
     exit 1
   fi
 
-  for f in "$MIG_DIR"/*.sql; do
+  for f in "$MIG_DIR"/*.sql "$SQL_DIR"/0*.sql; do
     [ -e "$f" ] || continue
     base=$(basename "$f")
     # 迁移里是 ADD COLUMN / CREATE TABLE IF NOT EXISTS，重复执行报 1060/1017 属正常，用 --force 跳过。
