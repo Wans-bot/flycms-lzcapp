@@ -51,7 +51,11 @@ else
 
   log "导入 ${SQL}"
   # 输出落盘再看退出码：管道接 tail 会把 tail 的状态当成 mysql 的状态。
-  if mysql --default-character-set=utf8mb4 -h "$HOST" -u"$USER" "$DB" < "$SQL" > /tmp/flycms-import.log 2>&1; then
+  # --force：基线是上游 2026-09-28 导出的 2.9MB dump，曾因 `'true'`/`'false'` 写进 tinyint
+  # 列在严格模式下报 ERROR 1366 而整库建不起来（2026-10-22 实机验收）。字面量已改 1/0，
+  # 这里再兜一层：历史 dump 里若还有别的隐式转换错误，也让导入走完；真缺表由下面的
+  # base_tables < EXPECTED 校验兜底。
+  if mysql --force --default-character-set=utf8mb4 -h "$HOST" -u"$USER" "$DB" < "$SQL" > /tmp/flycms-import.log 2>&1; then
     log "基线导入成功"
   else
     log "基线导入失败，末尾 20 行："
