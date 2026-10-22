@@ -1,0 +1,30 @@
+version: 1
+
+project:
+  root: .
+  build_config: lzc-build.yml
+  package_file: package.yml
+  output: out/flycms.lpk
+  target_arch: amd64
+
+update:
+  strategy: publish
+  allow_downgrade: false
+  version_source:
+    type: git
+
+build:
+  run_buildscript: false
+  toolchains:
+    - kind: docker
+
+stores:
+  official:
+    changelog_locales:
+      - zh
+      - en
+    enabled: false  # 待真机验收通过后改回 true
+    skip_if_version_exists: true
+    create_if_missing: false
+  private:
+    enabled: false

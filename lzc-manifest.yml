@@ -96,7 +96,7 @@ services:
       retries: 90
 
   flycms:
-    image: registry.lazycat.cloud/wans/wans-bot/flycms-lzcapp:071a05e14694a248
+    image: embed:flycms
     depends_on:
       - flycms-db
       - flycms-init
@@ -124,7 +124,7 @@ services:
 
   # 统一入口：/admin/ 出后台 SPA，其余反代到 flycms（门户前台与 /api）
   web:
-    image: registry.lazycat.cloud/wans/wans-bot/flycms-lzcapp-web:cff666a019674445
+    image: embed:web
     depends_on:
       - flycms
     healthcheck:
