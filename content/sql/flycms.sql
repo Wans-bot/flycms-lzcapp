@@ -50696,8 +50696,8 @@ CREATE TABLE `fly_message` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 INSERT INTO `fly_message` (`id`, `from_id`, `to_id`, `subject`, `message`, `send_time`, `write_time`, `has_view`, `is_admin`, `state`) VALUES
-('1299322634072502272', '999999999999999001', '999999999999999002', '系统通知测试', '你的文章已通过审核', '2026-09-21T08:05:22', '2026-09-21T08:05:22', 'false', 'true', 1),
-('1299323615401226240', '999999999999999001', '999999999999999002', '系统通知测试', '你的文章已通过审核', '2026-09-21T08:09:16', '2026-09-21T08:09:16', 'false', 'true', 1);
+('1299322634072502272', '999999999999999001', '999999999999999002', '系统通知测试', '你的文章已通过审核', '2026-09-21T08:05:22', '2026-09-21T08:05:22', 0, 1, 1),
+('1299323615401226240', '999999999999999001', '999999999999999002', '系统通知测试', '你的文章已通过审核', '2026-09-21T08:09:16', '2026-09-21T08:09:16', 0, 1, 1);
 
 -- 2 rows for fly_message
 
@@ -50746,10 +50746,10 @@ CREATE TABLE `fly_model` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COMMENT='内容模型定义';
 
 INSERT INTO `fly_model` (`id`, `name`, `code`, `title_label`, `is_system`, `list_template`, `detail_template`, `icon`, `description`, `sort`, `status`, `create_time`, `update_time`) VALUES
-('1', '图片模型', 'images', '图片标题', 'true', NULL, NULL, 'lucide:image', '图组内容类型', '1', '1', '2026-09-21T04:28:39', NULL),
-('2', '下载模型', 'downloads', '资源标题', 'true', NULL, NULL, 'lucide:download', '软件/资源下载内容类型', '2', '1', '2026-09-21T04:28:39', NULL),
-('3', '文章模型', 'articles', '文章标题', 'true', NULL, NULL, 'lucide:file-text', '通用文章内容类型', '3', '1', '2026-09-21T05:50:20', NULL),
-('4', '测试模型', 'testdemo', '标题', 'false', NULL, NULL, NULL, NULL, '9', '1', '2026-09-21T04:38:25', NULL);
+('1', '图片模型', 'images', '图片标题', 1, NULL, NULL, 'lucide:image', '图组内容类型', '1', '1', '2026-09-21T04:28:39', NULL),
+('2', '下载模型', 'downloads', '资源标题', 1, NULL, NULL, 'lucide:download', '软件/资源下载内容类型', '2', '1', '2026-09-21T04:28:39', NULL),
+('3', '文章模型', 'articles', '文章标题', 1, NULL, NULL, 'lucide:file-text', '通用文章内容类型', '3', '1', '2026-09-21T05:50:20', NULL),
+('4', '测试模型', 'testdemo', '标题', 0, NULL, NULL, NULL, NULL, '9', '1', '2026-09-21T04:38:25', NULL);
 
 -- 4 rows for fly_model
 
@@ -50809,25 +50809,25 @@ CREATE TABLE `fly_model_field` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1299270555874373633 DEFAULT CHARSET=utf8mb4 COMMENT='模型字段定义';
 
 INSERT INTO `fly_model_field` (`id`, `model_id`, `field_name`, `field_label`, `field_type`, `column_type`, `default_value`, `maxlength`, `dict_type`, `options`, `is_required`, `is_list`, `is_search`, `is_filter`, `regex`, `placeholder`, `tips`, `sort`, `status`, `create_time`, `update_time`, `tab_name`) VALUES
-('900000000000010101', '1', 'images', '图组', 'images', 'json', NULL, NULL, NULL, NULL, 'true', 'false', 'true', 'false', NULL, NULL, NULL, '1', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
-('900000000000010102', '1', 'shoot_time', '拍摄时间', 'datetime', 'datetime', NULL, NULL, NULL, NULL, 'false', 'true', 'false', 'false', NULL, NULL, NULL, '2', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
-('900000000000010103', '1', 'location', '拍摄地点', 'region', 'varchar(64)', NULL, NULL, NULL, NULL, 'false', 'true', 'false', 'true', NULL, NULL, NULL, '3', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
-('900000000000010104', '1', 'camera', '相机', 'input', 'varchar(255)', NULL, '255', NULL, NULL, 'false', 'true', 'false', 'false', NULL, NULL, NULL, '4', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
-('900000000000010105', '1', 'author', '作者', 'input', 'varchar(64)', NULL, '64', NULL, NULL, 'false', 'true', 'false', 'false', NULL, NULL, NULL, '5', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
-('900000000000020101', '2', 'file', '附件', 'file', 'bigint(20) unsigned', NULL, NULL, NULL, NULL, 'true', 'false', 'true', 'false', NULL, NULL, NULL, '1', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
-('900000000000020102', '2', 'file_size', '文件大小', 'number', 'bigint(20)', NULL, NULL, NULL, NULL, 'false', 'true', 'false', 'false', NULL, NULL, NULL, '2', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
-('900000000000020103', '2', 'run_env', '运行环境', 'textarea', 'text', NULL, NULL, NULL, NULL, 'false', 'false', 'false', 'false', NULL, NULL, NULL, '3', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
-('900000000000020104', '2', 'demo_url', '演示地址', 'input', 'varchar(255)', NULL, '255', NULL, NULL, 'false', 'true', 'false', 'false', NULL, NULL, NULL, '4', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
-('900000000000020105', '2', 'os_require', '系统要求', 'select', 'varchar(64)', NULL, NULL, 'app_os', '["Windows","Linux","macOS"]', 'false', 'true', 'false', 'true', NULL, NULL, NULL, '5', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
-('900000000000020106', '2', 'auth', '授权方式', 'select', 'varchar(64)', NULL, NULL, 'soft_auth', '["免费软件","开源软件","共享软件","商业软件"]', 'false', 'true', 'false', 'true', NULL, NULL, NULL, '6', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
-('900000000000020107', '2', 'language', '程序语言', 'select', 'varchar(64)', NULL, NULL, 'soft_language', '["简体中文","英文","多语言"]', 'false', 'true', 'false', 'true', NULL, NULL, NULL, '7', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
-('900000000000020108', '2', 'score', '下载积分', 'number', 'bigint(20)', NULL, NULL, NULL, NULL, 'false', 'true', 'false', 'false', NULL, NULL, NULL, '8', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
-('900000000000030101', '3', 'source', '内容来源', 'input', 'varchar(64)', NULL, '64', NULL, NULL, 'false', 'true', 'false', 'false', NULL, NULL, NULL, '1', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
-('900000000000030102', '3', 'author', '作者', 'input', 'varchar(64)', NULL, '64', NULL, NULL, 'false', 'true', 'false', 'false', NULL, NULL, NULL, '2', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
-('900000000000030103', '3', 'tags', '标签', 'input', 'varchar(255)', NULL, '255', NULL, NULL, 'false', 'false', 'true', 'false', NULL, NULL, NULL, '3', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
-('900000000000030104', '3', 'redirecturl', '跳转地址', 'input', 'varchar(255)', NULL, '255', NULL, NULL, 'false', 'false', 'false', 'false', NULL, NULL, NULL, '4', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
-('1299270555513663488', '4', 'price', '价格', 'decimal', 'decimal(18,2)', NULL, NULL, NULL, NULL, 'true', 'true', 'false', 'true', NULL, NULL, NULL, '1', '1', '2026-09-21T04:38:25', NULL, '基础信息'),
-('1299270555874373632', '4', 'download_count', '下载次数', 'number', 'bigint(20)', NULL, NULL, NULL, NULL, 'false', 'true', 'false', 'false', NULL, NULL, NULL, '2', '1', '2026-09-21T04:38:25', NULL, '基础信息');
+('900000000000010101', '1', 'images', '图组', 'images', 'json', NULL, NULL, NULL, NULL, 1, 0, 1, 0, NULL, NULL, NULL, '1', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
+('900000000000010102', '1', 'shoot_time', '拍摄时间', 'datetime', 'datetime', NULL, NULL, NULL, NULL, 0, 1, 0, 0, NULL, NULL, NULL, '2', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
+('900000000000010103', '1', 'location', '拍摄地点', 'region', 'varchar(64)', NULL, NULL, NULL, NULL, 0, 1, 0, 1, NULL, NULL, NULL, '3', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
+('900000000000010104', '1', 'camera', '相机', 'input', 'varchar(255)', NULL, '255', NULL, NULL, 0, 1, 0, 0, NULL, NULL, NULL, '4', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
+('900000000000010105', '1', 'author', '作者', 'input', 'varchar(64)', NULL, '64', NULL, NULL, 0, 1, 0, 0, NULL, NULL, NULL, '5', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
+('900000000000020101', '2', 'file', '附件', 'file', 'bigint(20) unsigned', NULL, NULL, NULL, NULL, 1, 0, 1, 0, NULL, NULL, NULL, '1', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
+('900000000000020102', '2', 'file_size', '文件大小', 'number', 'bigint(20)', NULL, NULL, NULL, NULL, 0, 1, 0, 0, NULL, NULL, NULL, '2', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
+('900000000000020103', '2', 'run_env', '运行环境', 'textarea', 'text', NULL, NULL, NULL, NULL, 0, 0, 0, 0, NULL, NULL, NULL, '3', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
+('900000000000020104', '2', 'demo_url', '演示地址', 'input', 'varchar(255)', NULL, '255', NULL, NULL, 0, 1, 0, 0, NULL, NULL, NULL, '4', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
+('900000000000020105', '2', 'os_require', '系统要求', 'select', 'varchar(64)', NULL, NULL, 'app_os', '["Windows","Linux","macOS"]', 0, 1, 0, 1, NULL, NULL, NULL, '5', '1', '2026-09-21T04:28:39', NULL, '基础信息'),
+('900000000000020106', '2', 'auth', '授权方式', 'select', 'varchar(64)', NULL, NULL, 'soft_auth', '["免费软件","开源软件","共享软件","商业软件"]', 0, 1, 0, 1, NULL, NULL, NULL, '6', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
+('900000000000020107', '2', 'language', '程序语言', 'select', 'varchar(64)', NULL, NULL, 'soft_language', '["简体中文","英文","多语言"]', 0, 1, 0, 1, NULL, NULL, NULL, '7', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
+('900000000000020108', '2', 'score', '下载积分', 'number', 'bigint(20)', NULL, NULL, NULL, NULL, 0, 1, 0, 0, NULL, NULL, NULL, '8', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
+('900000000000030101', '3', 'source', '内容来源', 'input', 'varchar(64)', NULL, '64', NULL, NULL, 0, 1, 0, 0, NULL, NULL, NULL, '1', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
+('900000000000030102', '3', 'author', '作者', 'input', 'varchar(64)', NULL, '64', NULL, NULL, 0, 1, 0, 0, NULL, NULL, NULL, '2', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
+('900000000000030103', '3', 'tags', '标签', 'input', 'varchar(255)', NULL, '255', NULL, NULL, 0, 0, 1, 0, NULL, NULL, NULL, '3', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
+('900000000000030104', '3', 'redirecturl', '跳转地址', 'input', 'varchar(255)', NULL, '255', NULL, NULL, 0, 0, 0, 0, NULL, NULL, NULL, '4', '1', '2026-09-21T05:50:20', NULL, '基础信息'),
+('1299270555513663488', '4', 'price', '价格', 'decimal', 'decimal(18,2)', NULL, NULL, NULL, NULL, 1, 1, 0, 1, NULL, NULL, NULL, '1', '1', '2026-09-21T04:38:25', NULL, '基础信息'),
+('1299270555874373632', '4', 'download_count', '下载次数', 'number', 'bigint(20)', NULL, NULL, NULL, NULL, 0, 1, 0, 0, NULL, NULL, NULL, '2', '1', '2026-09-21T04:38:25', NULL, '基础信息');
 
 -- 19 rows for fly_model_field
 
@@ -51304,7 +51304,7 @@ CREATE TABLE `fly_user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='用户信息表';
 
 INSERT INTO `fly_user` (`user_id`, `short_url`, `user_name`, `user_mobile`, `user_email`, `password`, `nick_name`, `true_name`, `sex`, `avatar`, `work`, `signature`, `description`, `telephone`, `province`, `city`, `area`, `contact_addr`, `zip`, `qq`, `birthday`, `custom`, `last_login`, `login_ip`, `attempts`, `attempts_time`, `create_time`, `status`) VALUES
-('999999999999999002', NULL, 'demo_user', NULL, 'demo@flycms.local', '$2a$10$fjV0KVmKSpvLlrHY485pmuNUul2Yd3Zw1MBVM.11zsT6DONMfnWoS', NULL, NULL, 'true', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0', NULL, '2026-09-21T07:59:51', 1);
+('999999999999999002', NULL, 'demo_user', NULL, 'demo@flycms.local', '$2a$10$fjV0KVmKSpvLlrHY485pmuNUul2Yd3Zw1MBVM.11zsT6DONMfnWoS', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0', NULL, '2026-09-21T07:59:51', 1);
 
 -- 1 rows for fly_user
 
