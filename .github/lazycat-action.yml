@@ -23,7 +23,8 @@ stores:
     changelog_locales:
       - zh
       - en
-    enabled: false  # 待真机验收通过后改回 true
+    # 2026-10-23 实机验收通过（verdict=passed，27 页 0 问题、探针退出码 0）后开启自动提审。
+    enabled: true
     skip_if_version_exists: true
     create_if_missing: false
   private:
