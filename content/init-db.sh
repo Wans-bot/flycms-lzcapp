@@ -5,6 +5,7 @@
 # 上游基线 sql/flycms.sql 是 2026-09-28 09:33 导出的，比 master 落后 29 个迁移，
 # 逐条判断会留下「表在了但列没补齐」的半状态（实测踩到 use_content、relate_model、is_unique 三次）。
 # 这里把基线 + 全部迁移视作一个整体，用 LZC_SCHEMA_REV 标记它的版本：
+#   rev 6：带上上游 27 个迁移 + 999 兜底补列（fly_model_field 缺 min_value/formula 等会让首页 500）
 #   * 库里的 rev 与当前脚本不一致 → 整库重建后重放全部迁移（确定性）；
 #   * 一致 → 直接常驻，不重放（重启不会插重复数据）。
 set -u -o pipefail
@@ -21,7 +22,7 @@ MIG_DIR="${LZC_MIGRATION_DIR:-$SQL_DIR/migrations}"
 DB="${LZC_DB_NAME:-flycms}"
 DONE=/tmp/init-db.done
 # 改动基线或迁移后必须递增，容器重启时才会按新版本重建。
-REV="${LZC_SCHEMA_REV:-5}"
+REV="${LZC_SCHEMA_REV:-6}"
 EXPECTED="${LZC_EXPECTED_TABLES:-80}"
 STATE=fly_lzc_schema_state
 log() { echo "[flycms-init] $*"; }
